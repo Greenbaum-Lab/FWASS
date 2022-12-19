@@ -73,6 +73,15 @@ def read_df_file(f_path):
             if data[-1] == '\n':
                 data = data[:-1]
             data_split = [e[:-1].split('\t') for e in data]
+            line_indices_to_remove = []
+            for idx, line in enumerate(data_split):
+                non_fail = [e for e in line if e != "FAIL"]
+                if len(non_fail) == 0:
+                    line_indices_to_remove.append(idx)
+                alleles = non_fail[0].split('/')
+                if all([non_fail[0] == e for e in non_fail]) and alleles[0] == alleles[1]:
+                    line_indices_to_remove.append(idx)
+            data_split = [j for i, j in enumerate(data_split) if i not in line_indices_to_remove]
             df = pd.DataFrame(data_split).T
     else:
         assert False, "ERROR Parsing GENEpop format file"
