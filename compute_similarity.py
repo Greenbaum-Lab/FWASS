@@ -41,7 +41,8 @@ def assign_allele_numbers(data_df):
 def genepop_to_012matrix(df, num_to_name, max_num_of_alleles):
     dfs = [df.copy() for _ in range(max_num_of_alleles)]
     snps_names = list(df.columns)
-    snps_names.remove("ID")
+    if "ID" in snps_names:
+        snps_names.remove("ID")
     for allele_num, allele_matrix in enumerate(dfs, start=1):
         del allele_matrix['ID']
         for snp_name in snps_names:
