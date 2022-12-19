@@ -10,7 +10,8 @@ import os
 
 def assign_allele_numbers(data_df):
     snps_names = list(data_df.columns)
-    snps_names.remove("ID")
+    if "ID" in snps_names:
+        snps_names.remove("ID")
     max_num_of_alleles = 1
     name_to_num = {s: {} for s in snps_names}
     num_to_name = {s: {} for s in snps_names}
