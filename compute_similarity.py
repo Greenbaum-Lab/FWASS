@@ -86,8 +86,6 @@ def vcf_to_small_matrices(input_format, options, mid_outputs_path):
             sites_names.append(site_uniq_name)
             last_line = f.readline().decode()
             sites_counter += 1
-            if sites_counter > 10000:
-                break
 
         if sites_names:
             df = pd.DataFrame(list(zip(*current_matrix)), index=individuals, columns=sites_names)
