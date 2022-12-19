@@ -67,7 +67,7 @@ def txtdf_to_012matrix(df, num_to_name, max_num_of_alleles):
 def vcf_to_small_matrices(input_format, options, mid_outputs_path):
     read_file_func = gzip.open if "GZ" in input_format else open
     max_num_of_cells = options.max_mb * 10**6
-    pbar = tqdm(desc="Run over sites: ")
+    pbar = tqdm(desc="Run over sites")
     with read_file_func(options.input, "rb") as f:
         last_line = f.readline().decode()
         while last_line.startswith("##"):
@@ -85,9 +85,6 @@ def vcf_to_small_matrices(input_format, options, mid_outputs_path):
         last_line = f.readline().decode()
         while last_line:
             if sites_counter % num_sites_to_read == 0:
-                # df = pd.DataFrame(list(zip(*current_matrix)), index=individuals, columns=sites_names)
-                # df.index.name = "ID"
-                # df.to_csv(os.path.join(mid_outputs_path, f'mat_{matrices_counter}.csv'))
                 with open(os.path.join(mid_outputs_path, f'mat_{matrices_counter}.txt'), "w") as g:
                     g.write(current_matrix)
                 sites_names = []
@@ -104,9 +101,6 @@ def vcf_to_small_matrices(input_format, options, mid_outputs_path):
             pbar.update(1)
 
         if sites_names:
-            # df = pd.DataFrame(list(zip(*current_matrix)), index=individuals, columns=sites_names)
-            # df.index.name = "ID"
-            # df.to_csv(os.path.join(mid_outputs_path, f'mat_{matrices_counter}.csv'))
             with open(os.path.join(mid_outputs_path, f'mat_{matrices_counter}.txt'), "w") as g:
                 g.write(current_matrix)
 
@@ -187,7 +181,7 @@ def merge_matrices(options, individual_names):
     mid_outputs_path = os.path.join(options.output, "mid_res")
     similarity_dirs = [os.path.join(mid_outputs_path, e) for e in os.listdir(mid_outputs_path) if 'similarity' in e]
     sim_np, count_np = get_sim_and_count_from_directory(options, similarity_dirs[0])
-    for directory in similarity_dirs[1:]:
+    for directory in tqdm(similarity_dirs[1:], desc="Merging matrices "):
         new_sim_np, new_count_np = get_sim_and_count_from_directory(options, directory)
         sim_np += new_sim_np
         count_np += new_count_np
