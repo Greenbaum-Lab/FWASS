@@ -77,8 +77,8 @@ def vcf_to_small_matrices(input_format, options, mid_outputs_path):
                 # df = pd.DataFrame(list(zip(*current_matrix)), index=individuals, columns=sites_names)
                 # df.index.name = "ID"
                 # df.to_csv(os.path.join(mid_outputs_path, f'mat_{matrices_counter}.csv'))
-                with open(os.path.join(mid_outputs_path, f'mat_{matrices_counter}.txt'), "w") as f:
-                    f.write(current_matrix)
+                with open(os.path.join(mid_outputs_path, f'mat_{matrices_counter}.txt'), "w") as g:
+                    g.write(current_matrix)
                 sites_names = []
                 current_matrix = ""
                 matrices_counter += 1
