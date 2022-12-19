@@ -45,7 +45,8 @@ def genepop_to_012matrix(df, num_to_name, max_num_of_alleles):
     if "ID" in snps_names:
         snps_names.remove("ID")
     for allele_num, allele_matrix in enumerate(dfs, start=1):
-        del allele_matrix['ID']
+        if 'ID' in allele_matrix:
+            del allele_matrix['ID']
         for snp_name in snps_names:
             if allele_num in num_to_name[snp_name]:
                 allele_name = num_to_name[snp_name][allele_num]
