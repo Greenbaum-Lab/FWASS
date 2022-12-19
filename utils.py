@@ -17,15 +17,31 @@ def args_parser():
     parser.add_argument("-w", "--weighted", dest="weighted_metric", default=False, action="store_true",
                         help="If used, compute weighted metric, from Greenbaum et al., 2016. If not use, compute "
                              "unweighted metric from  Li and Horvitz, 1953")
-    parser.add_argument("--max_memo", dest="max_mb", default=20, type=int,
+    parser.add_argument("--max_memo", dest="max_mb", default=0.5, type=float,
                         help="Max number of cells (individuals lultiple by sites) to use in a single matrix "
                              "(in millions). if doesn't know, don't touch. If there are memory failures, reduce it.")
+    parser.add_argument("--max_threads", dest="max_threads", default=8, type=int,
+                        help="Maximum number of threads to compute small matrices simultaneously")
+    parser.add_argument("--max_sites", dest="max_sites", default=0, type=int,
+                        help="If assigned, compute similarity only based on the first n sites")
     parser.add_argument("--args", dest="args", help="Any additional args")
     options = parser.parse_args()
     if options.output[-1] != '/':
         options.output += '/'
     os.makedirs(options.output, exist_ok=True)
     return options
+
+
+def wait_for_jobs_to_be_done(jobs, max_number_of_threads):
+    finished_jobs = []
+    while len(jobs) - len(finished_jobs) >= max_number_of_threads:
+        time.sleep(1)
+        for job in jobs:
+            job.join(timeout=0)
+            if not job.is_alive():
+                finished_jobs.append(job)
+    running_jobs = [j for j in jobs if j not in finished_jobs]
+    return running_jobs
 
 
 def dfs2_3d_numpy(list_of_dfs):

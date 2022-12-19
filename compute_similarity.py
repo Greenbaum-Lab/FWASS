@@ -3,7 +3,7 @@ import time
 from multiprocessing import Process
 import pandas as pd
 from tqdm import tqdm
-from utils import args_parser, read_df_file, dfs2_3d_numpy, parse_input_file_format
+from utils import args_parser, read_df_file, dfs2_3d_numpy, parse_input_file_format, wait_for_jobs_to_be_done
 import numpy as np
 import os
 
@@ -76,7 +76,7 @@ def vcf_to_small_matrices(input_format, options, mid_outputs_path):
         individuals = line[9:]
         format_dict = {x: line.index(x) for x in ["ID", "FORMAT", "#CHROM", "POS"]}
         num_of_indv = len(individuals)
-        num_sites_to_read = max_num_of_cells // num_of_indv
+        num_sites_to_read = int(max_num_of_cells // num_of_indv)
         matrices_counter = 0
         sites_names = []
         current_matrix = ""
@@ -88,7 +88,6 @@ def vcf_to_small_matrices(input_format, options, mid_outputs_path):
                 with open(os.path.join(mid_outputs_path, f'mat_{matrices_counter}.txt'), "w") as g:
                     g.write(current_matrix)
 
-                time.sleep(10)
                 sites_names = []
                 current_matrix = ""
                 matrices_counter += 1
@@ -101,6 +100,8 @@ def vcf_to_small_matrices(input_format, options, mid_outputs_path):
             last_line = f.readline().decode()
             sites_counter += 1
             pbar.update(1)
+            if options.max_sites and sites_counter > options.max_sites:
+                break
 
         if sites_names:
             with open(os.path.join(mid_outputs_path, f'mat_{matrices_counter}.txt'), "w") as g:
@@ -108,8 +109,8 @@ def vcf_to_small_matrices(input_format, options, mid_outputs_path):
 
         with open(os.path.join(mid_outputs_path, "done.txt"), "w") as f:
             f.write("\t".join(individuals))
-        print(f"DONE!\n{sites_counter} sites in total, divided over {matrices_counter} matrices."
-              f" {num_sites_to_read} in each matrix.")
+        print(f"Done reading VCF file!\n{sites_counter -1} sites in total, divided over {matrices_counter + 1} matrices."
+              f" {num_sites_to_read} in each matrix.\n Currently computing the last few similarity matrices.")
 
 
 def matrices012_to_similarity_matrix(input_matrices, weighted):
@@ -157,12 +158,12 @@ def submit_all_matrices_ready(options, last_computed_matrix, mid_outputs_path, p
     files = [e for e in os.listdir(mid_outputs_path) if os.path.isfile(os.path.join(mid_outputs_path, e)) and e != "done.txt"]
     files_numbers = [int(e.split('.')[0][4:]) for e in files]
     files_to_process = sorted([i for i in files_numbers if i > last_computed_matrix])
-    time.sleep(2)
     if files_to_process:
         last_computed_matrix = max(files_to_process) - 1
     for idx in files_to_process:
         if idx == max(files_to_process):
             continue
+        procs = wait_for_jobs_to_be_done(procs, options.max_threads)
         input_name = os.path.join(mid_outputs_path, f"mat_{idx}.txt")
         output_name = os.path.join(mid_outputs_path, f"similarity_{idx}")
         run_similarity_job = Process(target=vcf_single_job, args=(options, input_name, output_name))
@@ -201,14 +202,15 @@ def analyze_by_vcf(input_format, options):
     last_computed_matrix = -1
     done_reading_file = os.path.join(mid_outputs_path, "done.txt")
     while not os.path.exists(done_reading_file):
-        last_computed_matrix, jobs = submit_all_matrices_ready(options, last_computed_matrix, mid_outputs_path, procs)
-    last_computed_matrix, jobs = submit_all_matrices_ready(options, last_computed_matrix, mid_outputs_path, procs)
-    for proc in procs:
-        proc.join()
+        time.sleep(1)
+        last_computed_matrix, procs = submit_all_matrices_ready(options, last_computed_matrix, mid_outputs_path, procs)
+    last_computed_matrix, procs = submit_all_matrices_ready(options, last_computed_matrix, mid_outputs_path, procs)
     idx = last_computed_matrix + 1
     input_name = os.path.join(mid_outputs_path, f"mat_{idx}.txt")
     output_name = os.path.join(mid_outputs_path, f"similarity_{idx}")
     vcf_single_job(options, input_name, output_name)
+    for proc in procs:
+        proc.join()
     with open(done_reading_file, "r") as f:
         individual_names = f.read().strip().split('\t')
     merge_matrices(options, individual_names)
