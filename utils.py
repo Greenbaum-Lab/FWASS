@@ -17,7 +17,7 @@ def args_parser():
     parser.add_argument("-w", "--weighted", dest="weighted_metric", default=False, action="store_true",
                         help="If used, compute weighted metric, from Greenbaum et al., 2016. If not use, compute "
                              "unweighted metric from  Li and Horvitz, 1953")
-    parser.add_argument("--max_memo", dest="max_mb", default=20, type=float,
+    parser.add_argument("--max_memo", dest="max_mb", default=20, type=int,
                         help="Max number of cells (individuals lultiple by sites) to use in a single matrix "
                              "(in millions). if doesn't know, don't touch. If there are memory failures, reduce it.")
     parser.add_argument("--args", dest="args", help="Any additional args")
@@ -57,8 +57,7 @@ def read_df_file(f_path):
             if data[-1] == '\n':
                 data = data[:-1]
             data_split = [e[:-1].split('\t') for e in data]
-            df = pd.DataFrame(data_split)
-            df.index.name = "ID"
+            df = pd.DataFrame(data_split).T
     else:
         assert False, "ERROR Parsing GENEpop format file"
     return df

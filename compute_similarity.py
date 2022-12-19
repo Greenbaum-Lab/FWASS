@@ -8,10 +8,7 @@ import numpy as np
 import os
 
 
-def assign_allele_numbers(data_df):
-    snps_names = list(data_df.columns)
-    if "ID" in snps_names:
-        snps_names.remove("ID")
+def assign_allele_numbers(data_df, snps_names):
     max_num_of_alleles = 1
     name_to_num = {s: {} for s in snps_names}
     num_to_name = {s: {} for s in snps_names}
@@ -42,11 +39,22 @@ def assign_allele_numbers(data_df):
 def genepop_to_012matrix(df, num_to_name, max_num_of_alleles):
     dfs = [df.copy() for _ in range(max_num_of_alleles)]
     snps_names = list(df.columns)
-    if "ID" in snps_names:
-        snps_names.remove("ID")
+    snps_names.remove("ID")
     for allele_num, allele_matrix in enumerate(dfs, start=1):
-        if 'ID' in allele_matrix:
-            del allele_matrix['ID']
+        del allele_matrix['ID']
+        for snp_name in snps_names:
+            if allele_num in num_to_name[snp_name]:
+                allele_name = num_to_name[snp_name][allele_num]
+                allele_matrix[snp_name] = allele_matrix[snp_name].apply(lambda x: x.count(allele_name) if x != "FAIL" else 0)
+            else:
+                allele_matrix[snp_name] = 0
+    return dfs
+
+
+def txtdf_to_012matrix(df, num_to_name, max_num_of_alleles):
+    dfs = [df.copy() for _ in range(max_num_of_alleles)]
+    snps_names = list(df.columns)
+    for allele_num, allele_matrix in enumerate(dfs, start=1):
         for snp_name in snps_names:
             if allele_num in num_to_name[snp_name]:
                 allele_name = num_to_name[snp_name][allele_num]
@@ -96,9 +104,11 @@ def vcf_to_small_matrices(input_format, options, mid_outputs_path):
             pbar.update(1)
 
         if sites_names:
-            df = pd.DataFrame(list(zip(*current_matrix)), index=individuals, columns=sites_names)
-            df.index.name = "ID"
-            df.to_csv(os.path.join(mid_outputs_path, f'mat_{matrices_counter}.csv'))
+            # df = pd.DataFrame(list(zip(*current_matrix)), index=individuals, columns=sites_names)
+            # df.index.name = "ID"
+            # df.to_csv(os.path.join(mid_outputs_path, f'mat_{matrices_counter}.csv'))
+            with open(os.path.join(mid_outputs_path, f'mat_{matrices_counter}.txt'), "w") as g:
+                g.write(current_matrix)
 
         with open(os.path.join(mid_outputs_path, "done.txt"), "w") as f:
             f.write("\t".join(individuals))
@@ -126,17 +136,19 @@ def matrices012_to_similarity_matrix(input_matrices, weighted):
     return 1/4 * similarity, pairwise_count_valid_sites
 
 
-def save_outputs(options, sim_mat, count_mat, individual_names, output_dir, save_numpy):
+def save_numpy_outputs(options, sim_mat, count_mat, output_dir):
+    os.makedirs(output_dir, exist_ok=True)
+    raw_sim_out_path = os.path.join(output_dir, "raw_similarity" + '_weighted' * options.weighted_metric + '.npy')
+    count_out_path = os.path.join(output_dir, "count.npy")
+    np.save(raw_sim_out_path, sim_mat)
+    np.save(count_out_path, count_mat)
+
+
+def save_df_outputs(options, sim_mat, count_mat, individual_names, output_dir):
     os.makedirs(output_dir, exist_ok=True)
     raw_sim_out_path = os.path.join(output_dir, "raw_similarity" + '_weighted' * options.weighted_metric + '.csv')
     sim_out_path = os.path.join(output_dir, "similarity" + '_weighted' * options.weighted_metric + '.csv')
     count_out_path = os.path.join(output_dir, "count.csv")
-    if save_numpy:
-        raw_sim_out_path = raw_sim_out_path.split('.')[0] + '.npy'
-        count_out_path = count_out_path.split('.')[0] + '.npy'
-        np.save(raw_sim_out_path, sim_mat)
-        np.save(count_out_path, count_mat)
-        return
     count_df = pd.DataFrame(count_mat, columns=individual_names, index=individual_names)
     raw_similarity_df = pd.DataFrame(sim_mat, columns=individual_names, index=individual_names)
     similarity_df = pd.DataFrame(sim_mat / count_mat, columns=individual_names, index=individual_names)
@@ -157,7 +169,7 @@ def submit_all_matrices_ready(options, last_computed_matrix, mid_outputs_path, p
             continue
         input_name = os.path.join(mid_outputs_path, f"mat_{idx}.txt")
         output_name = os.path.join(mid_outputs_path, f"similarity_{idx}")
-        run_similarity_job = Process(target=analyze_by_df, args=(options, input_name, output_name, True))
+        run_similarity_job = Process(target=vcf_single_job, args=(options, input_name, output_name))
         procs.append(run_similarity_job)
         run_similarity_job.start()
     return last_computed_matrix, procs
@@ -200,20 +212,32 @@ def analyze_by_vcf(input_format, options):
     idx = last_computed_matrix + 1
     input_name = os.path.join(mid_outputs_path, f"mat_{idx}.txt")
     output_name = os.path.join(mid_outputs_path, f"similarity_{idx}")
-    analyze_by_df(options, input_name, output_name, save_numpy=True)
+    vcf_single_job(options, input_name, output_name)
     with open(done_reading_file, "r") as f:
         individual_names = f.read().strip().split('\t')
     merge_matrices(options, individual_names)
 
 
-def analyze_by_df(options, input_file, output_dir, save_numpy=False):
+def vcf_single_job(options, input_name, output_name):
+    s_time = time.time()
+    df = read_df_file(input_name)
+    num_to_name, name_to_num, max_num_of_alleles = assign_allele_numbers(df, df.columns)
+    dfs_list = txtdf_to_012matrix(df, num_to_name, max_num_of_alleles)
+    similarity, counts = matrices012_to_similarity_matrix(dfs2_3d_numpy(dfs_list), options.weighted_metric)
+    save_numpy_outputs(options, similarity, counts, output_name)
+    with open(os.path.join(output_name, "time.txt"), "w") as f:
+        f.write(str(time.time() - s_time))
+
+
+def analyze_by_df(options, input_file, output_dir):
     s_time = time.time()
     df = read_df_file(input_file)
-    num_to_name, name_to_num, max_num_of_alleles = assign_allele_numbers(df)
+    snps_names = list(df.columns); snps_names.remove("ID")
+    num_to_name, name_to_num, max_num_of_alleles = assign_allele_numbers(df, snps_names)
     dfs_list = genepop_to_012matrix(df, num_to_name, max_num_of_alleles)
     similarity, counts = matrices012_to_similarity_matrix(dfs2_3d_numpy(dfs_list), options.weighted_metric)
     individual_names = list(df['ID'])
-    save_outputs(options, similarity, counts, individual_names, output_dir, save_numpy)
+    save_df_outputs(options, similarity, counts, individual_names, output_dir)
     with open(os.path.join(output_dir, "time.txt"), "w") as f:
         f.write(str(time.time() - s_time))
 
@@ -226,4 +250,4 @@ if __name__ == '__main__':
         analyze_by_vcf(input_format, arguments)
     elif 'DF' in input_format:
         analyze_by_df(arguments, arguments.input, arguments.output)
-    print(f"It all took {(time.time() - s_time)} minutes!")
+    print(f"It all took {(time.time() - s_time) / 60} minutes!")
