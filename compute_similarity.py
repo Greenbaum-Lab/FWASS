@@ -3,76 +3,62 @@ import time
 from multiprocessing import Process
 import pandas as pd
 from tqdm import tqdm
-from utils import args_parser, read_df_file, dfs2_3d_numpy, parse_input_file_format, wait_for_jobs_to_be_done
+from utils import args_parser, read_df_file, parse_input_file_format, wait_for_jobs_to_be_done
 import numpy as np
+import shutil
 import os
 
 
-def assign_allele_numbers(data_df, snps_names):
+def assign_allele_numbers(data_df, loci_names):
+    """
+    Give a natural number (including 0) to each allele, without loss of generality.
+    The function meanwhile build matrices as number of the maximum number of alleles per locus.
+    It also builds the 3D matrix on the way.
+    :param data_df: Raw data frame. Every diploid sample is mark as "x/y" where x and y are some alleles,
+     not necessarily a single letter, marked as any way. Every invalid sample is filled with "FAIL"
+     The data_df param is in shape(N*M), literly every row is individual, and every column is a locus.
+    :param loci_names: list of loci names
+    :return:  a 3D matrix of shape (T*N*M) where T is maximum number of alleles per locus,
+     N is number of individuals, and M is number of loci.
+    """
     new_arrs = [np.zeros(shape=data_df.shape)]
     max_num_of_alleles = 0
-    name_to_num = {s: {} for s in snps_names}
-    num_to_name = {s: {} for s in snps_names}
-    for snp_idx, snp_name in enumerate(snps_names):
-        snp_data = data_df[snp_name]
-        for single_snp_data in snp_data.items():
-            if single_snp_data[1] == 'FAIL':
+    name_to_num = {s: {} for s in loci_names}
+    for locus_idx, locus_name in enumerate(loci_names):
+        locus_data = data_df[locus_name]
+        for single_locus_data in locus_data.items():
+            if single_locus_data[1] == 'FAIL':
                 continue
 
-            alleles = single_snp_data[1].split('/')
+            alleles = single_locus_data[1].split('/')
             for allele in [e.strip() for e in alleles]:
-                if allele in name_to_num[snp_name]:
-                    new_arrs[name_to_num[snp_name][allele]][single_snp_data[0]][snp_idx] += 1
+                if allele in name_to_num[locus_name]:
+                    new_arrs[name_to_num[locus_name][allele]][single_locus_data[0]][locus_idx] += 1
                     continue
                 else:
-                    if len(name_to_num[snp_name]) == 0:
-                        name_to_num[snp_name][allele] = 0
-                        num_to_name[snp_name][0] = allele
-                        new_arrs[0][single_snp_data[0]][snp_idx] += 1
+                    if len(name_to_num[locus_name]) == 0:
+                        name_to_num[locus_name][allele] = 0
+                        new_arrs[0][single_locus_data[0]][locus_idx] += 1
                     else:
-                        next_idx = max(name_to_num[snp_name].values()) + 1
+                        next_idx = max(name_to_num[locus_name].values()) + 1
                         if next_idx > max_num_of_alleles:
                             max_num_of_alleles = next_idx
                             new_arrs.append(np.zeros(shape=data_df.shape))
-                        name_to_num[snp_name][allele] = next_idx
-                        num_to_name[snp_name][next_idx] = allele
-                        new_arrs[next_idx][single_snp_data[0]][snp_idx] += 1
+                        name_to_num[locus_name][allele] = next_idx
+                        new_arrs[next_idx][single_locus_data[0]][locus_idx] += 1
     np_arr = np.array(new_arrs)
 
     return np_arr, max_num_of_alleles
 
 
-def genepop_to_012matrix(df, num_to_name, max_num_of_alleles):
-    dfs = [df.copy() for _ in range(max_num_of_alleles)]
-    snps_names = list(df.columns)
-    snps_names.remove("ID")
-    for allele_num, allele_matrix in enumerate(dfs, start=1):
-        del allele_matrix['ID']
-        for snp_name in snps_names:
-            if allele_num in num_to_name[snp_name]:
-                allele_name = num_to_name[snp_name][allele_num]
-                allele_matrix[snp_name] = allele_matrix[snp_name].apply(lambda x: x.count(allele_name) if x != "FAIL" else 0)
-            else:
-                allele_matrix[snp_name] = 0
-    return dfs
-
-
-def txtdf_to_012matrix(df, num_to_name, max_num_of_alleles):
-    dfs = [df.copy() for _ in range(max_num_of_alleles)]
-    snps_names = list(df.columns)
-    for allele_num, allele_matrix in enumerate(dfs, start=1):
-        s_time = time.time()
-        for snp_name in snps_names:
-            if allele_num in num_to_name[snp_name]:
-                allele_name = num_to_name[snp_name][allele_num]
-                allele_matrix[snp_name] = allele_matrix[snp_name].apply(lambda x: x.count(allele_name) if x != "FAIL" else 0)
-            else:
-                allele_matrix[snp_name] = 0
-        print(time.time() - s_time)
-    return dfs
-
-
 def vcf_to_small_matrices(input_format, options, mid_outputs_path):
+    """
+    Parse the VCF file, and save small matrices to compute on different threads.
+    :param input_format: "VCF-GZ" if it compressed as gzip, "VCF" if its a text file in a VCF format.
+    :param options: running arguments
+    :param mid_outputs_path: path of directory to throw mid results for computations.
+    :return: None, The function parse the file and save the small matrices in a mid_res directory.
+    """
     read_file_func = gzip.open if "GZ" in input_format else open
     max_num_of_cells = options.max_mb * 10**6
     print(f"Analyzing VCF file {options.input}")
@@ -124,8 +110,15 @@ def vcf_to_small_matrices(input_format, options, mid_outputs_path):
 
 def matrices012_to_similarity_matrix(input_matrices, weighted):
     """
-    Get numpy array of input (count of ones of the alleles in 012 format). row per individual, column per site.
-    Return similarity matrix (row for individual, column for individual)
+    Compute similarity (see options in README)
+    :param input_matrices: 3D of 012 matrix, first axis is per allele number,
+     second axis is per individual, third axis is per locus. In cell[x,y,z] there is a count
+     of how may times do individual y has the allele x in locus z. It can be up to 2.
+    :param weighted: If False (default) use relatedness measure from (Li and Horvitz, 1953).
+     If True, use frequency weighted metric from (Greenbaum et al., 2016).
+    :return: Similarity matrix (rows are individuals, columns are individuals), and count matrix which
+    is also individuals * individuals matrix, which tells us on how many sites each pair was computed.
+    This verify between pairs thanks to invalid data.
     """
     is_valid_matrix = np.sum(input_matrices, axis=0) / 2
     pairwise_count_valid_sites = is_valid_matrix @ is_valid_matrix.T
@@ -143,6 +136,14 @@ def matrices012_to_similarity_matrix(input_matrices, weighted):
 
 
 def save_numpy_outputs(options, sim_mat, count_mat, output_dir):
+    """
+    Save numpy arrays as npy files for later computations
+    :param options: running arguments
+    :param sim_mat: similarity matrix
+    :param count_mat: counts matrix
+    :param output_dir: directory to write outputs
+    :return: None
+    """
     os.makedirs(output_dir, exist_ok=True)
     raw_sim_out_path = os.path.join(output_dir, "raw_similarity" + '_weighted' * options.weighted_metric + '.npy')
     count_out_path = os.path.join(output_dir, "count.npy")
@@ -151,6 +152,15 @@ def save_numpy_outputs(options, sim_mat, count_mat, output_dir):
 
 
 def save_df_outputs(options, sim_mat, count_mat, individual_names, output_dir):
+    """
+    Save the numpy array as csv files with names of individuals.
+    :param options: running arguments
+    :param sim_mat: similarity matrix
+    :param count_mat: counts matrix
+    :param individual_names: list of individual names
+    :param output_dir: directory to write outputs
+    :return: None
+    """
     os.makedirs(output_dir, exist_ok=True)
     raw_sim_out_path = os.path.join(output_dir, "raw_similarity" + '_weighted' * options.weighted_metric + '.csv')
     sim_out_path = os.path.join(output_dir, "similarity" + '_weighted' * options.weighted_metric + '.csv')
@@ -164,6 +174,15 @@ def save_df_outputs(options, sim_mat, count_mat, individual_names, output_dir):
 
 
 def submit_all_matrices_ready(options, last_computed_matrix, mid_outputs_path, procs):
+    """
+    Check if the parser job prepare new small matrices outputs, if so,
+     submit jobs to compute their similarities.
+    :param options: running arguments
+    :param last_computed_matrix: last index of computed matrix
+    :param mid_outputs_path: mid results output directory
+    :param procs: list of running processes
+    :return: new last computed index matrix and new list of processes
+    """
     files = [e for e in os.listdir(mid_outputs_path) if os.path.isfile(os.path.join(mid_outputs_path, e)) and e != "done.txt"]
     files_numbers = [int(e.split('.')[0][4:]) for e in files]
     files_to_process = sorted([i for i in files_numbers if i > last_computed_matrix])
@@ -182,6 +201,13 @@ def submit_all_matrices_ready(options, last_computed_matrix, mid_outputs_path, p
 
 
 def get_sim_and_count_from_directory(options, directory):
+    """
+    Read raw similarity (not divided by counts yet) and counts array from a certain directory.
+    Used from mid-computations.
+    :param options: running arguments
+    :param directory: path to directory to read from.
+    :return: numpy array of raw similarity matrix, and numpy array of count amtrix
+    """
     raw_sim_path = os.path.join(directory, "raw_similarity" + '_weighted' * options.weighted_metric + '.npy')
     count_path = os.path.join(directory, "count.npy")
     sim_np = np.load(raw_sim_path)
@@ -190,6 +216,14 @@ def get_sim_and_count_from_directory(options, directory):
 
 
 def merge_matrices(options, individual_names):
+    """
+    Sum all raw similarity matrices (not divided by counts),
+    sum all counts matrices, and then divided the sums.
+    Resulting a true average similarity computations of all sites.
+    :param options: running arguments
+    :param individual_names: list of individual names
+    :return: None, it saves the similarity and counts matrices in the output directory as csv files.
+    """
     mid_outputs_path = os.path.join(options.output, "mid_res")
     similarity_dirs = [os.path.join(mid_outputs_path, e) for e in os.listdir(mid_outputs_path) if 'similarity' in e]
     sim_np, count_np = get_sim_and_count_from_directory(options, similarity_dirs[0])
@@ -202,9 +236,16 @@ def merge_matrices(options, individual_names):
     counts_df = pd.DataFrame(count_np, columns=individual_names, index=individual_names)
     similarity_df.to_csv(os.path.join(options.output, "similarity" + '_weighted' * options.weighted_metric + '.csv'))
     counts_df.to_csv(os.path.join(options.output, 'counts.csv'))
+    shutil.rmtree(mid_outputs_path)
 
 
 def analyze_by_vcf(input_format, options):
+    """
+    compute similarity from a VCF file
+    :param input_format: VCF-GZ for a VCF file compressed with gzip, VCF for uncompressed text file in VCF format.
+    :param options: running arguments
+    :return: None, it saves the similarity and counts matrices in the output directory.
+    """
     mid_outputs_path = os.path.join(options.output, "mid_res")
     os.makedirs(mid_outputs_path, exist_ok=True)
     reader_job = Process(target=vcf_to_small_matrices, args=(input_format, options, mid_outputs_path))
@@ -228,27 +269,42 @@ def analyze_by_vcf(input_format, options):
     merge_matrices(options, individual_names)
 
 
-def vcf_single_job(options, input_name, output_name):
+def vcf_single_job(options, input_name, output_dir):
+    """
+    Compute similarity on a mid-results small matrix
+    :param options: running arguments
+    :param input_name: path of data file. The data is a matrix in a text format made in the VCF parser job.
+    :param output_dir: directory to save raw similarity matrix and counts matrix
+    :return: None, it saves the outputs in output_dir.
+    """
     s_time = time.time()
     df = read_df_file(input_name)
     np_3d_arr, max_num_of_alleles = assign_allele_numbers(df, df.columns)
-    # dfs_list = txtdf_to_012matrix(df, num_to_name, max_num_of_alleles)
     similarity, counts = matrices012_to_similarity_matrix(np_3d_arr, options.weighted_metric)
-    save_numpy_outputs(options, similarity, counts, output_name)
-    with open(os.path.join(output_name, "time.txt"), "w") as f:
+    save_numpy_outputs(options, similarity, counts, output_dir)
+    with open(os.path.join(output_dir, "time.txt"), "w") as f:
         f.write(str(time.time() - s_time))
 
 
-def analyze_by_df(options, input_file, output_dir):
+def analyze_by_df(options):
+    """
+    compute similarity from a genepop file.
+    First column should be name "ID" with individual names under it.
+    Rest columns names are the sites names.
+    Every cell should be "x/y" where x and y are alleles marked any desired way.
+    Missing data should be mark as "FAIL"
+    :param options: running arguments
+    :return: None, it saves the similarity and counts matrices in the output directory.
+    """
     s_time = time.time()
-    df = read_df_file(input_file)
-    snps_names = list(df.columns); snps_names.remove("ID")
-    np_3d_arr, max_num_of_alleles = assign_allele_numbers(df, snps_names)
-    # dfs_list = genepop_to_012matrix(df, num_to_name, max_num_of_alleles)
+    df = read_df_file(options.input_file)
+    loci_names = list(df.columns)
+    loci_names.remove("ID")
+    np_3d_arr, max_num_of_alleles = assign_allele_numbers(df, loci_names)
     similarity, counts = matrices012_to_similarity_matrix(np_3d_arr, options.weighted_metric)
     individual_names = list(df['ID'])
-    save_df_outputs(options, similarity, counts, individual_names, output_dir)
-    with open(os.path.join(output_dir, "time.txt"), "w") as f:
+    save_df_outputs(options, similarity, counts, individual_names, options.output)
+    with open(os.path.join(options.output, "time.txt"), "w") as f:
         f.write(str(time.time() - s_time))
 
 
@@ -259,28 +315,8 @@ def main():
     if 'VCF' in input_format:
         analyze_by_vcf(input_format, arguments)
     elif 'DF' in input_format:
-        analyze_by_df(arguments, arguments.input, arguments.output)
+        analyze_by_df(arguments)
     print(f"It all took {(time.time() - s_time) / 60} minutes!")
-
-
-def debug_txt2012():
-    s_time = time.time()
-    arguments = args_parser()
-    idx = 11
-    mid_outputs_path = os.path.join(arguments.output, "mid_res")
-    input_name = os.path.join(mid_outputs_path, f"mat_{idx}.txt")
-    output_name = os.path.join(mid_outputs_path, f"similarity_{idx}")
-    df = read_df_file(input_name)
-    print(f"reading DF takes {time.time() - s_time}")
-    s_time = time.time()
-    num_to_name, name_to_num, max_num_of_alleles = assign_allele_numbers(df, df.columns)
-    print(f"Assign allele numbers takes {time.time() - s_time}")
-    s_time = time.time()
-    dfs_list = txtdf_to_012matrix(df, num_to_name, max_num_of_alleles)
-    print(f"txtdf 2 012 matrix takes {time.time() - s_time}")
-    s_time = time.time()
-    similarity, counts = matrices012_to_similarity_matrix(dfs2_3d_numpy(dfs_list), arguments.weighted_metric)
-    print(f"012 to similarity takes {time.time() - s_time}")
 
 
 if __name__ == '__main__':
