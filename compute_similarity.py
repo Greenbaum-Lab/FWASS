@@ -152,7 +152,7 @@ def submit_all_matrices_ready(options, last_computed_matrix, mid_outputs_path, p
     for idx in files_to_process:
         if idx == max(files_to_process):
             continue
-        input_name = os.path.join(mid_outputs_path, f"mat_{idx}.csv")
+        input_name = os.path.join(mid_outputs_path, f"mat_{idx}.txt")
         output_name = os.path.join(mid_outputs_path, f"similarity_{idx}")
         run_similarity_job = Process(target=analyze_by_df, args=(options, input_name, output_name, True))
         procs.append(run_similarity_job)
@@ -195,7 +195,7 @@ def analyze_by_vcf(input_format, options):
     for proc in procs:
         proc.join()
     idx = last_computed_matrix + 1
-    input_name = os.path.join(mid_outputs_path, f"mat_{idx}.csv")
+    input_name = os.path.join(mid_outputs_path, f"mat_{idx}.txt")
     output_name = os.path.join(mid_outputs_path, f"similarity_{idx}")
     analyze_by_df(options, input_name, output_name, save_numpy=True)
     with open(done_reading_file, "r") as f:
