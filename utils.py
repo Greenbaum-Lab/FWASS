@@ -81,6 +81,7 @@ def read_df_file(f_path):
                 alleles = non_fail[0].split('/')
                 if all([non_fail[0] == e for e in non_fail]) and alleles[0] == alleles[1]:
                     line_indices_to_remove.append(idx)
+                    print(f"skiped {idx}")
             data_split = [j for i, j in enumerate(data_split) if i not in line_indices_to_remove]
             df = pd.DataFrame(data_split).T
     else:
