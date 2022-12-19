@@ -87,6 +87,8 @@ def vcf_to_small_matrices(input_format, options, mid_outputs_path):
             if sites_counter % num_sites_to_read == 0:
                 with open(os.path.join(mid_outputs_path, f'mat_{matrices_counter}.txt'), "w") as g:
                     g.write(current_matrix)
+
+                time.sleep(1)
                 sites_names = []
                 current_matrix = ""
                 matrices_counter += 1
