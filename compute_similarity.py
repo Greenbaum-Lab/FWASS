@@ -56,7 +56,7 @@ def genepop_to_012matrix(df, num_to_name, max_num_of_alleles):
 def vcf_to_small_matrices(input_format, options, mid_outputs_path):
     read_file_func = gzip.open if "GZ" in input_format else open
     max_num_of_cells = options.max_mb * 10**6
-    pbar = tqdm()
+    pbar = tqdm(desc="Run over sites: ")
     with read_file_func(options.input, "rb") as f:
         last_line = f.readline().decode()
         while last_line.startswith("##"):
@@ -68,22 +68,24 @@ def vcf_to_small_matrices(input_format, options, mid_outputs_path):
         num_sites_to_read = max_num_of_cells // num_of_indv
         matrices_counter = 0
         sites_names = []
-        current_matrix = []
+        current_matrix = ""
         sites_counter = 1
         pbar.update(1)
         last_line = f.readline().decode()
         while last_line:
             if sites_counter % num_sites_to_read == 0:
-                df = pd.DataFrame(list(zip(*current_matrix)), index=individuals, columns=sites_names)
-                df.index.name = "ID"
-                df.to_csv(os.path.join(mid_outputs_path, f'mat_{matrices_counter}.csv'))
+                # df = pd.DataFrame(list(zip(*current_matrix)), index=individuals, columns=sites_names)
+                # df.index.name = "ID"
+                # df.to_csv(os.path.join(mid_outputs_path, f'mat_{matrices_counter}.csv'))
+                with open(os.path.join(mid_outputs_path, f'mat_{matrices_counter}.txt'), "w") as f:
+                    f.write(current_matrix)
                 sites_names = []
-                current_matrix = []
+                current_matrix = ""
                 matrices_counter += 1
             line = last_line.split()
             assert(len(line[9:]) == len(individuals) and line[format_dict["FORMAT"]].startswith("GT"))
             indv_gt = ['FAIL' if '.' in e[:3] else e[:3].replace('|', '/') for e in line[9:]]
-            current_matrix.append(indv_gt)
+            current_matrix += "\t".join(indv_gt) + '\n'
             site_uniq_name = f"{line[format_dict['#CHROM']]}_{line[format_dict['POS']]}_{line[format_dict['ID']]}"
             sites_names.append(site_uniq_name)
             last_line = f.readline().decode()

@@ -18,7 +18,7 @@ def args_parser():
                         help="If used, compute weighted metric, from Greenbaum et al., 2016. If not use, compute "
                              "unweighted metric from  Li and Horvitz, 1953")
     parser.add_argument("--max_memo", dest="max_mb", default=20, type=int,
-                        help="Max number of cells (individuals multiple by sites) to use in a single matrix "
+                        help="Max number of cells (individuals lultiple by sites) to use in a single matrix "
                              "(in millions). if doesn't know, don't touch. If there are memory failures, reduce it.")
     parser.add_argument("--args", dest="args", help="Any additional args")
     options = parser.parse_args()
@@ -51,6 +51,14 @@ def read_df_file(f_path):
         data = pd.read_excel(f_path)
     elif f_path.endswith(".csv"):
         data = pd.read_csv(f_path)
+    elif f_path.endswith('.txt'):
+        with open(f_path, "r") as f:
+            data = f.readlines()
+            if data[-1] == '\n':
+                data = data[:-1]
+            data_split = [e[:-1].split('\t') for e in data]
+            df = pd.DataFrame(data_split)
+            df.index.name = "ID"
     else:
         assert False, "ERROR Parsing GENEpop format file"
     return data
