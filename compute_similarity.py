@@ -87,7 +87,7 @@ def vcf_to_small_matrices(input_format, options, mid_outputs_path):
                 current_matrix = ""
                 matrices_counter += 1
             # line = last_line.split()
-            assert(len(line[9:]) == len(individuals) and line[format_dict["FORMAT"]].startswith("GT"))
+            # assert(len(line[9:]) == len(individuals) and line[format_dict["FORMAT"]].startswith("GT"))
             # indv_gt = ['FAIL' if '.' in e[:3] else e[:3].replace('|', '/') for e in line[9:]]
             # current_matrix += "\t".join(indv_gt) + '\n'
             current_matrix += "\t".join(line) + '\n'
