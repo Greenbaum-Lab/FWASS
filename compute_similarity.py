@@ -9,10 +9,11 @@ import os
 
 
 def assign_allele_numbers(data_df, snps_names):
-    max_num_of_alleles = 1
+    new_arrs = [np.zeros(shape=data_df.shape)]
+    max_num_of_alleles = 0
     name_to_num = {s: {} for s in snps_names}
     num_to_name = {s: {} for s in snps_names}
-    for snp_name in snps_names:
+    for snp_idx, snp_name in enumerate(snps_names):
         snp_data = data_df[snp_name]
         for single_snp_data in snp_data.items():
             if single_snp_data[1] == 'FAIL':
@@ -21,19 +22,24 @@ def assign_allele_numbers(data_df, snps_names):
             alleles = single_snp_data[1].split('/')
             for allele in [e.strip() for e in alleles]:
                 if allele in name_to_num[snp_name]:
+                    new_arrs[name_to_num[snp_name][allele]][single_snp_data[0]][snp_idx] += 1
                     continue
                 else:
                     if len(name_to_num[snp_name]) == 0:
-                        name_to_num[snp_name][allele] = 1
-                        num_to_name[snp_name][1] = allele
+                        name_to_num[snp_name][allele] = 0
+                        num_to_name[snp_name][0] = allele
+                        new_arrs[0][single_snp_data[0]][snp_idx] += 1
                     else:
                         next_idx = max(name_to_num[snp_name].values()) + 1
                         if next_idx > max_num_of_alleles:
                             max_num_of_alleles = next_idx
+                            new_arrs.append(np.zeros(shape=data_df.shape))
                         name_to_num[snp_name][allele] = next_idx
                         num_to_name[snp_name][next_idx] = allele
+                        new_arrs[next_idx][single_snp_data[0]][snp_idx] += 1
+    np_arr = np.array(new_arrs)
 
-    return num_to_name, name_to_num, max_num_of_alleles
+    return np_arr, max_num_of_alleles
 
 
 def genepop_to_012matrix(df, num_to_name, max_num_of_alleles):
@@ -55,12 +61,14 @@ def txtdf_to_012matrix(df, num_to_name, max_num_of_alleles):
     dfs = [df.copy() for _ in range(max_num_of_alleles)]
     snps_names = list(df.columns)
     for allele_num, allele_matrix in enumerate(dfs, start=1):
+        s_time = time.time()
         for snp_name in snps_names:
             if allele_num in num_to_name[snp_name]:
                 allele_name = num_to_name[snp_name][allele_num]
                 allele_matrix[snp_name] = allele_matrix[snp_name].apply(lambda x: x.count(allele_name) if x != "FAIL" else 0)
             else:
                 allele_matrix[snp_name] = 0
+        print(time.time() - s_time)
     return dfs
 
 
@@ -127,7 +135,7 @@ def matrices012_to_similarity_matrix(input_matrices, weighted):
             num_valid_genotypes = np.sum(is_valid_matrix, axis=0)
             allele_count = np.sum(matrix, axis=0)
             freq = allele_count / (2 * num_valid_genotypes)
-            similarity += ((1 - freq) * matrix) @ matrix.T
+            similarity += ((1 - np.nan_to_num(freq)) * matrix) @ matrix.T
         else:
             similarity += matrix @ matrix.T * 2
 
@@ -223,9 +231,9 @@ def analyze_by_vcf(input_format, options):
 def vcf_single_job(options, input_name, output_name):
     s_time = time.time()
     df = read_df_file(input_name)
-    num_to_name, name_to_num, max_num_of_alleles = assign_allele_numbers(df, df.columns)
-    dfs_list = txtdf_to_012matrix(df, num_to_name, max_num_of_alleles)
-    similarity, counts = matrices012_to_similarity_matrix(dfs2_3d_numpy(dfs_list), options.weighted_metric)
+    np_3d_arr, max_num_of_alleles = assign_allele_numbers(df, df.columns)
+    # dfs_list = txtdf_to_012matrix(df, num_to_name, max_num_of_alleles)
+    similarity, counts = matrices012_to_similarity_matrix(np_3d_arr, options.weighted_metric)
     save_numpy_outputs(options, similarity, counts, output_name)
     with open(os.path.join(output_name, "time.txt"), "w") as f:
         f.write(str(time.time() - s_time))
@@ -235,9 +243,9 @@ def analyze_by_df(options, input_file, output_dir):
     s_time = time.time()
     df = read_df_file(input_file)
     snps_names = list(df.columns); snps_names.remove("ID")
-    num_to_name, name_to_num, max_num_of_alleles = assign_allele_numbers(df, snps_names)
-    dfs_list = genepop_to_012matrix(df, num_to_name, max_num_of_alleles)
-    similarity, counts = matrices012_to_similarity_matrix(dfs2_3d_numpy(dfs_list), options.weighted_metric)
+    np_3d_arr, max_num_of_alleles = assign_allele_numbers(df, snps_names)
+    # dfs_list = genepop_to_012matrix(df, num_to_name, max_num_of_alleles)
+    similarity, counts = matrices012_to_similarity_matrix(np_3d_arr, options.weighted_metric)
     individual_names = list(df['ID'])
     save_df_outputs(options, similarity, counts, individual_names, output_dir)
     with open(os.path.join(output_dir, "time.txt"), "w") as f:
@@ -255,10 +263,10 @@ def main():
     print(f"It all took {(time.time() - s_time) / 60} minutes!")
 
 
-if __name__ == '__main__':
+def debug_txt2012():
     s_time = time.time()
     arguments = args_parser()
-    idx = 113
+    idx = 11
     mid_outputs_path = os.path.join(arguments.output, "mid_res")
     input_name = os.path.join(mid_outputs_path, f"mat_{idx}.txt")
     output_name = os.path.join(mid_outputs_path, f"similarity_{idx}")
@@ -273,3 +281,7 @@ if __name__ == '__main__':
     s_time = time.time()
     similarity, counts = matrices012_to_similarity_matrix(dfs2_3d_numpy(dfs_list), arguments.weighted_metric)
     print(f"012 to similarity takes {time.time() - s_time}")
+
+
+if __name__ == '__main__':
+    main()
