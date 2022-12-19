@@ -1,8 +1,10 @@
 import argparse
 import os
-
 import pandas as pd
 import numpy as np
+from multiprocessing import Process
+
+import time
 
 
 def args_parser():
@@ -39,7 +41,7 @@ def parse_input_file_format(input):
         return "DF"
     if input.endswith("vcf.gz"):
         return "VCF-GZ"
-    if input.endswith(".vcf"):
+    if input.endswith(".vcf") or input.endswith(".txt"):
         return "VCF"
     raise IOError("File format is not supported")
 
@@ -52,4 +54,5 @@ def read_df_file(f_path):
     else:
         assert False, "ERROR Parsing GENEpop format file"
     return data
+
 

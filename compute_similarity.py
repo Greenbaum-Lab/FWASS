@@ -1,6 +1,6 @@
 import gzip
 import time
-
+from multiprocessing import Process
 import pandas as pd
 from tqdm import tqdm
 from utils import args_parser, read_df_file, dfs2_3d_numpy, parse_input_file_format
@@ -80,7 +80,7 @@ def vcf_to_small_matrices(input_format, options, mid_outputs_path):
                 matrices_counter += 1
             line = last_line.split()
             assert(len(line[9:]) == len(individuals) and line[format_dict["FORMAT"]].startswith("GT"))
-            indv_gt = ['FAIL' if '.' in e[:3] else e[:3] for e in line[9:]]
+            indv_gt = ['FAIL' if '.' in e[:3] else e[:3].replace('|', '/') for e in line[9:]]
             current_matrix.append(indv_gt)
             site_uniq_name = f"{line[format_dict['#CHROM']]}_{line[format_dict['POS']]}_{line[format_dict['ID']]}"
             sites_names.append(site_uniq_name)
@@ -120,11 +120,17 @@ def matrices012_to_similarity_matrix(input_matrices, weighted):
     return 1/4 * similarity, pairwise_count_valid_sites
 
 
-def save_outputs(options, sim_mat, count_mat, individual_names, output_dir):
+def save_outputs(options, sim_mat, count_mat, individual_names, output_dir, save_numpy):
     os.makedirs(output_dir, exist_ok=True)
     raw_sim_out_path = os.path.join(output_dir, "raw_similarity" + '_weighted' * options.weighted_metric + '.csv')
     sim_out_path = os.path.join(output_dir, "similarity" + '_weighted' * options.weighted_metric + '.csv')
     count_out_path = os.path.join(output_dir, "count.csv")
+    if save_numpy:
+        raw_sim_out_path = raw_sim_out_path.split('.')[0] + '.npy'
+        count_out_path = count_out_path.split('.')[0] + '.npy'
+        np.save(raw_sim_out_path, sim_mat)
+        np.save(count_out_path, count_mat)
+        return
     count_df = pd.DataFrame(count_mat, columns=individual_names, index=individual_names)
     raw_similarity_df = pd.DataFrame(sim_mat, columns=individual_names, index=individual_names)
     similarity_df = pd.DataFrame(sim_mat / count_mat, columns=individual_names, index=individual_names)
@@ -133,11 +139,11 @@ def save_outputs(options, sim_mat, count_mat, individual_names, output_dir):
     count_df.to_csv(count_out_path)
 
 
-def submit_all_matrices_ready(options, last_computed_matrix, mid_outputs_path, jobs):
+def submit_all_matrices_ready(options, last_computed_matrix, mid_outputs_path, procs):
     files = [e for e in os.listdir(mid_outputs_path) if os.path.isfile(os.path.join(mid_outputs_path, e)) and e != "done.txt"]
     files_numbers = [int(e.split('.')[0][4:]) for e in files]
     files_to_process = sorted([i for i in files_numbers if i > last_computed_matrix])
-    time.sleep(5)
+    time.sleep(2)
     if files_to_process:
         last_computed_matrix = max(files_to_process) - 1
     for idx in files_to_process:
@@ -145,20 +151,17 @@ def submit_all_matrices_ready(options, last_computed_matrix, mid_outputs_path, j
             continue
         input_name = os.path.join(mid_outputs_path, f"mat_{idx}.csv")
         output_name = os.path.join(mid_outputs_path, f"similarity_{idx}")
-        run_similarity_job = os.fork()
-        if run_similarity_job:
-            jobs.append(run_similarity_job)
-        else:
-            analyze_by_df(options, input_name, output_name)
-            exit(0)
-    return last_computed_matrix, jobs
+        run_similarity_job = Process(target=analyze_by_df, args=(options, input_name, output_name, True))
+        procs.append(run_similarity_job)
+        run_similarity_job.start()
+    return last_computed_matrix, procs
 
 
 def get_sim_and_count_from_directory(options, directory):
-    raw_sim_path = os.path.join(directory, "raw_similarity" + '_weighted' * options.weighted_metric + '.csv')
-    count_path = os.path.join(directory, "count.csv")
-    sim_np = read_df_file(raw_sim_path).to_numpy()
-    count_np = read_df_file(count_path).to_numpy()
+    raw_sim_path = os.path.join(directory, "raw_similarity" + '_weighted' * options.weighted_metric + '.npy')
+    count_path = os.path.join(directory, "count.npy")
+    sim_np = np.load(raw_sim_path)
+    count_np = np.load(count_path)
     return sim_np, count_np
 
 
@@ -176,38 +179,35 @@ def merge_matrices(options, individual_names):
 
 
 def analyze_by_vcf(input_format, options):
-    jobs = []
     mid_outputs_path = os.path.join(options.output, "mid_res")
     os.makedirs(mid_outputs_path, exist_ok=True)
-    reader_job = os.fork()
-    if reader_job:
-        jobs.append(reader_job)
-    else:
-        vcf_to_small_matrices(input_format, options, mid_outputs_path)
-        exit(0)
+    reader_job = Process(target=vcf_to_small_matrices, args=(input_format, options, mid_outputs_path))
+    procs = [reader_job]
+    reader_job.start()
     last_computed_matrix = -1
     done_reading_file = os.path.join(mid_outputs_path, "done.txt")
     while not os.path.exists(done_reading_file):
-        last_computed_matrix, jobs = submit_all_matrices_ready(options, last_computed_matrix, mid_outputs_path, jobs)
-    last_computed_matrix, jobs = submit_all_matrices_ready(options, last_computed_matrix, mid_outputs_path, jobs)
-    for job in jobs:
-        os.waitpid(job, 0)
+        last_computed_matrix, jobs = submit_all_matrices_ready(options, last_computed_matrix, mid_outputs_path, procs)
+    last_computed_matrix, jobs = submit_all_matrices_ready(options, last_computed_matrix, mid_outputs_path, procs)
+    for proc in procs:
+        proc.join()
     idx = last_computed_matrix + 1
     input_name = os.path.join(mid_outputs_path, f"mat_{idx}.csv")
     output_name = os.path.join(mid_outputs_path, f"similarity_{idx}")
-    analyze_by_df(options, input_name, output_name)
+    analyze_by_df(options, input_name, output_name, save_numpy=True)
     with open(done_reading_file, "r") as f:
         individual_names = f.read().strip().split('\t')
     merge_matrices(options, individual_names)
 
-def analyze_by_df(options, input_file, output_dir):
+
+def analyze_by_df(options, input_file, output_dir, save_numpy=False):
     s_time = time.time()
     df = read_df_file(input_file)
     num_to_name, name_to_num, max_num_of_alleles = assign_allele_numbers(df)
     dfs_list = genepop_to_012matrix(df, num_to_name, max_num_of_alleles)
     similarity, counts = matrices012_to_similarity_matrix(dfs2_3d_numpy(dfs_list), options.weighted_metric)
     individual_names = list(df['ID'])
-    save_outputs(options, similarity, counts, individual_names, output_dir)
+    save_outputs(options, similarity, counts, individual_names, output_dir, save_numpy)
     with open(os.path.join(output_dir, "time.txt"), "w") as f:
         f.write(str(time.time() - s_time))
 
@@ -220,4 +220,4 @@ if __name__ == '__main__':
         analyze_by_vcf(input_format, arguments)
     elif 'DF' in input_format:
         analyze_by_df(arguments, arguments.input, arguments.output)
-    print(f"It all took {time.time() / s_time} minutes!")
+    print(f"It all took {(time.time() - s_time)} minutes!")
