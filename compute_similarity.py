@@ -67,6 +67,7 @@ def txtdf_to_012matrix(df, num_to_name, max_num_of_alleles):
 def vcf_to_small_matrices(input_format, options, mid_outputs_path):
     read_file_func = gzip.open if "GZ" in input_format else open
     max_num_of_cells = options.max_mb * 10**6
+    print(f"Analyzing VCF file {options.input}")
     pbar = tqdm(desc="Run over sites")
     with read_file_func(options.input, "rb") as f:
         last_line = f.readline().decode()
@@ -190,20 +191,23 @@ def merge_matrices(options, individual_names):
         count_np += new_count_np
     similarity = sim_np / count_np
     similarity_df = pd.DataFrame(similarity, columns=individual_names, index=individual_names)
+    counts_df = pd.DataFrame(count_np, columns=individual_names, index=individual_names)
     similarity_df.to_csv(os.path.join(options.output, "similarity" + '_weighted' * options.weighted_metric + '.csv'))
+    counts_df.to_csv(os.path.join(options.output, 'counts.csv'))
 
 
 def analyze_by_vcf(input_format, options):
     mid_outputs_path = os.path.join(options.output, "mid_res")
     os.makedirs(mid_outputs_path, exist_ok=True)
     reader_job = Process(target=vcf_to_small_matrices, args=(input_format, options, mid_outputs_path))
-    procs = [reader_job]
+    procs = []
     reader_job.start()
     last_computed_matrix = -1
     done_reading_file = os.path.join(mid_outputs_path, "done.txt")
     while not os.path.exists(done_reading_file):
         time.sleep(1)
         last_computed_matrix, procs = submit_all_matrices_ready(options, last_computed_matrix, mid_outputs_path, procs)
+    reader_job.join()
     last_computed_matrix, procs = submit_all_matrices_ready(options, last_computed_matrix, mid_outputs_path, procs)
     idx = last_computed_matrix + 1
     input_name = os.path.join(mid_outputs_path, f"mat_{idx}.txt")
@@ -240,7 +244,7 @@ def analyze_by_df(options, input_file, output_dir):
         f.write(str(time.time() - s_time))
 
 
-if __name__ == '__main__':
+def main():
     s_time = time.time()
     arguments = args_parser()
     input_format = parse_input_file_format(arguments.input)
@@ -249,3 +253,23 @@ if __name__ == '__main__':
     elif 'DF' in input_format:
         analyze_by_df(arguments, arguments.input, arguments.output)
     print(f"It all took {(time.time() - s_time) / 60} minutes!")
+
+
+if __name__ == '__main__':
+    s_time = time.time()
+    arguments = args_parser()
+    idx = 113
+    mid_outputs_path = os.path.join(arguments.output, "mid_res")
+    input_name = os.path.join(mid_outputs_path, f"mat_{idx}.txt")
+    output_name = os.path.join(mid_outputs_path, f"similarity_{idx}")
+    df = read_df_file(input_name)
+    print(f"reading DF takes {time.time() - s_time}")
+    s_time = time.time()
+    num_to_name, name_to_num, max_num_of_alleles = assign_allele_numbers(df, df.columns)
+    print(f"Assign allele numbers takes {time.time() - s_time}")
+    s_time = time.time()
+    dfs_list = txtdf_to_012matrix(df, num_to_name, max_num_of_alleles)
+    print(f"txtdf 2 012 matrix takes {time.time() - s_time}")
+    s_time = time.time()
+    similarity, counts = matrices012_to_similarity_matrix(dfs2_3d_numpy(dfs_list), arguments.weighted_metric)
+    print(f"012 to similarity takes {time.time() - s_time}")

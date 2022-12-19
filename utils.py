@@ -17,7 +17,7 @@ def args_parser():
     parser.add_argument("-w", "--weighted", dest="weighted_metric", default=False, action="store_true",
                         help="If used, compute weighted metric, from Greenbaum et al., 2016. If not use, compute "
                              "unweighted metric from  Li and Horvitz, 1953")
-    parser.add_argument("--max_memo", dest="max_mb", default=0.5, type=float,
+    parser.add_argument("--max_memo", dest="max_mb", default=2, type=float,
                         help="Max number of cells (individuals lultiple by sites) to use in a single matrix "
                              "(in millions). if doesn't know, don't touch. If there are memory failures, reduce it.")
     parser.add_argument("--max_threads", dest="max_threads", default=8, type=int,
