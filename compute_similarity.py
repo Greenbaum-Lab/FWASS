@@ -56,6 +56,7 @@ def genepop_to_012matrix(df, num_to_name, max_num_of_alleles):
 def vcf_to_small_matrices(input_format, options, mid_outputs_path):
     read_file_func = gzip.open if "GZ" in input_format else open
     max_num_of_cells = options.max_mb * 10**6
+    pbar = tqdm()
     with read_file_func(options.input, "rb") as f:
         last_line = f.readline().decode()
         while last_line.startswith("##"):
@@ -69,6 +70,7 @@ def vcf_to_small_matrices(input_format, options, mid_outputs_path):
         sites_names = []
         current_matrix = []
         sites_counter = 1
+        pbar.update(1)
         last_line = f.readline().decode()
         while last_line:
             if sites_counter % num_sites_to_read == 0:
@@ -86,6 +88,7 @@ def vcf_to_small_matrices(input_format, options, mid_outputs_path):
             sites_names.append(site_uniq_name)
             last_line = f.readline().decode()
             sites_counter += 1
+            pbar.update(1)
 
         if sites_names:
             df = pd.DataFrame(list(zip(*current_matrix)), index=individuals, columns=sites_names)
