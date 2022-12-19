@@ -48,9 +48,9 @@ def parse_input_file_format(input):
 
 def read_df_file(f_path):
     if f_path.endswith(".xlsx"):
-        data = pd.read_excel(f_path)
+        df = pd.read_excel(f_path)
     elif f_path.endswith(".csv"):
-        data = pd.read_csv(f_path)
+        df = pd.read_csv(f_path)
     elif f_path.endswith('.txt'):
         with open(f_path, "r") as f:
             data = f.readlines()
@@ -61,6 +61,6 @@ def read_df_file(f_path):
             df.index.name = "ID"
     else:
         assert False, "ERROR Parsing GENEpop format file"
-    return data
+    return df
 
 
