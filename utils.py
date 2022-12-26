@@ -75,7 +75,7 @@ def filter_out_bad_sites(df):
             if same_as_first.size == non_fail.size:
                 loci_to_remove.append(locus_name)
     if loci_to_remove:
-        df.drop(loci_to_remove, axis=1)
+        df = df.drop(loci_to_remove, axis=1)
         num_of_sites = len(df.columns) - int('ID' in df.columns)
         print(f"Removed {len(loci_to_remove)} invalid loci. Compute similarity based on {num_of_sites} sites.")
     return df

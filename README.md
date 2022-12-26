@@ -22,7 +22,7 @@ If it ends with .csv or .xlsx we treat it as Genepop, and if it ends with .vcf o
 The program is using multi-threading computations in order to compute faster on large files. This is able only with VCF files.
 
 #### GenePop
-Files should be in a cvs or xlsx formats. 
+Files should be in a cvs or xlsx formats.
 GenePop files can be only deal with a single thread, and should be able to be read as a whole in memory.
 This is good for a small dataset, and not GWAS whole sequence datasets. 
 For large datasets, use VCF format, or you might face with memory problems.
@@ -55,7 +55,9 @@ Numpy, Pandas, tqdm
 There is a requirements.txt file in the repository for specific versions. 
 The repository supposed to work just fine with other versions as well.
 
-#### Make sure to work with Python3. This was not tested with Python2!
+If you use .xlsx files, you might need to pip or conda install openpyxl as well.
+
+#### <u>Make sure to work with Python3. This was not tested with Python2!</u>
 
 ### Running command line
 
