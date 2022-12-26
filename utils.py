@@ -15,7 +15,7 @@ def args_parser():
     parser.add_argument("-w", "--weighted", dest="weighted_metric", default=False, action="store_true",
                         help="If used, compute weighted metric, from Greenbaum et al., 2016. If not use, compute "
                              "unweighted metric from  Li and Horvitz, 1953")
-    parser.add_argument("--max_memo", dest="max_mb", default=2, type=float,
+    parser.add_argument("--max_memo", dest="max_mb", default=10, type=float,
                         help="Max number of cells (individuals multiply by sites) to use in a single matrix "
                              "(in millions). If you don't know, don't touch. If there are memory failures, reduce it."
                              " Default is 10")
@@ -40,14 +40,6 @@ def wait_for_jobs_to_be_done(jobs, max_number_of_threads):
                 finished_jobs.append(job)
     running_jobs = [j for j in jobs if j not in finished_jobs]
     return running_jobs
-
-
-def dfs2_3d_numpy(list_of_dfs):
-    num_of_matrices = len(list_of_dfs)
-    res = np.empty(shape=(num_of_matrices, list_of_dfs[0].shape[0], list_of_dfs[0].shape[1]))
-    for idx, matrix in enumerate(list_of_dfs):
-        res[idx] = matrix
-    return res
 
 
 def parse_input_file_format(input):
