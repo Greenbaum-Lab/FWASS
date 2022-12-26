@@ -16,12 +16,12 @@ def assign_allele_numbers(data_df, loci_names):
     It also builds the 3D matrix on the way.
     :param data_df: Raw data frame. Every diploid sample is mark as "x/y" where x and y are some alleles,
      not necessarily a single letter, marked as any way. Every invalid sample is filled with "FAIL"
-     The data_df param is in shape(N*M), literly every row is individual, and every column is a locus.
+     The data_df param is in shape(N*M), every row is individual, and every column is a locus.
     :param loci_names: list of loci names
     :return:  a 3D matrix of shape (T*N*M) where T is maximum number of alleles per locus,
      N is number of individuals, and M is number of loci.
     """
-    new_arrs = [np.zeros(shape=data_df.shape)]
+    new_arrs = [np.zeros(shape=(data_df.shape[0], len(loci_names)))]
     max_num_of_alleles = 0
     name_to_num = {s: {} for s in loci_names}
     for locus_idx, locus_name in enumerate(loci_names):
@@ -43,7 +43,7 @@ def assign_allele_numbers(data_df, loci_names):
                         next_idx = max(name_to_num[locus_name].values()) + 1
                         if next_idx > max_num_of_alleles:
                             max_num_of_alleles = next_idx
-                            new_arrs.append(np.zeros(shape=data_df.shape))
+                            new_arrs.append(np.zeros(shape=(data_df.shape[0], len(loci_names))))
                         name_to_num[locus_name][allele] = next_idx
                         new_arrs[next_idx][single_locus_data[0]][locus_idx] += 1
     np_arr = np.array(new_arrs)
@@ -54,9 +54,9 @@ def assign_allele_numbers(data_df, loci_names):
 def vcf_to_small_matrices(input_format, options, mid_outputs_path):
     """
     Parse the VCF file, and save small matrices to compute on different threads.
-    :param input_format: "VCF-GZ" if it compressed as gzip, "VCF" if its a text file in a VCF format.
+    :param input_format: "VCF-GZ" if it compressed as gzip, "VCF" if it's a text file in a VCF format.
     :param options: running arguments
-    :param mid_outputs_path: path of directory to throw mid results for computations.
+    :param mid_outputs_path: path of directory to throw mid-results for computations.
     :return: None, The function parse the file and save the small matrices in a mid_res directory.
     """
     read_file_func = gzip.open if "GZ" in input_format else open
@@ -80,7 +80,7 @@ def vcf_to_small_matrices(input_format, options, mid_outputs_path):
         last_line = f.readline().decode()
         while last_line:
             if sites_counter % num_sites_to_read == 0:
-                with open(os.path.join(mid_outputs_path, f'mat_{matrices_counter}.txt'), "w") as g:
+                with open(os.path.join(mid_outputs_path, f'mat_{matrices_counter}.tmp'), "w") as g:
                     g.write(current_matrix)
 
                 sites_names = []
@@ -99,7 +99,7 @@ def vcf_to_small_matrices(input_format, options, mid_outputs_path):
                 break
 
         if sites_names:
-            with open(os.path.join(mid_outputs_path, f'mat_{matrices_counter}.txt'), "w") as g:
+            with open(os.path.join(mid_outputs_path, f'mat_{matrices_counter}.tmp'), "w") as g:
                 g.write(current_matrix)
 
         with open(os.path.join(mid_outputs_path, "done.txt"), "w") as f:
@@ -118,7 +118,7 @@ def matrices012_to_similarity_matrix(input_matrices, weighted):
      If True, use frequency weighted metric from (Greenbaum et al., 2016).
     :return: Similarity matrix (rows are individuals, columns are individuals), and count matrix which
     is also individuals * individuals matrix, which tells us on how many sites each pair was computed.
-    This verify between pairs thanks to invalid data.
+    This verifies between pairs thanks to invalid data.
     """
     is_valid_matrix = np.sum(input_matrices, axis=0) / 2
     pairwise_count_valid_sites = is_valid_matrix @ is_valid_matrix.T
@@ -162,14 +162,11 @@ def save_df_outputs(options, sim_mat, count_mat, individual_names, output_dir):
     :return: None
     """
     os.makedirs(output_dir, exist_ok=True)
-    raw_sim_out_path = os.path.join(output_dir, "raw_similarity" + '_weighted' * options.weighted_metric + '.csv')
     sim_out_path = os.path.join(output_dir, "similarity" + '_weighted' * options.weighted_metric + '.csv')
     count_out_path = os.path.join(output_dir, "count.csv")
     count_df = pd.DataFrame(count_mat, columns=individual_names, index=individual_names)
-    raw_similarity_df = pd.DataFrame(sim_mat, columns=individual_names, index=individual_names)
     similarity_df = pd.DataFrame(sim_mat / count_mat, columns=individual_names, index=individual_names)
     similarity_df.to_csv(sim_out_path)
-    raw_similarity_df.to_csv(raw_sim_out_path)
     count_df.to_csv(count_out_path)
 
 
@@ -179,7 +176,7 @@ def submit_all_matrices_ready(options, last_computed_matrix, mid_outputs_path, p
      submit jobs to compute their similarities.
     :param options: running arguments
     :param last_computed_matrix: last index of computed matrix
-    :param mid_outputs_path: mid results output directory
+    :param mid_outputs_path: mid-results output directory
     :param procs: list of running processes
     :return: new last computed index matrix and new list of processes
     """
@@ -192,7 +189,7 @@ def submit_all_matrices_ready(options, last_computed_matrix, mid_outputs_path, p
         if idx == max(files_to_process):
             continue
         procs = wait_for_jobs_to_be_done(procs, options.max_threads)
-        input_name = os.path.join(mid_outputs_path, f"mat_{idx}.txt")
+        input_name = os.path.join(mid_outputs_path, f"mat_{idx}.tmp")
         output_name = os.path.join(mid_outputs_path, f"similarity_{idx}")
         run_similarity_job = Process(target=vcf_single_job, args=(options, input_name, output_name))
         procs.append(run_similarity_job)
@@ -206,7 +203,7 @@ def get_sim_and_count_from_directory(options, directory):
     Used from mid-computations.
     :param options: running arguments
     :param directory: path to directory to read from.
-    :return: numpy array of raw similarity matrix, and numpy array of count amtrix
+    :return: numpy array of raw similarity matrix, and numpy array of count matrix
     """
     raw_sim_path = os.path.join(directory, "raw_similarity" + '_weighted' * options.weighted_metric + '.npy')
     count_path = os.path.join(directory, "count.npy")
@@ -259,7 +256,7 @@ def analyze_by_vcf(input_format, options):
     reader_job.join()
     last_computed_matrix, procs = submit_all_matrices_ready(options, last_computed_matrix, mid_outputs_path, procs)
     idx = last_computed_matrix + 1
-    input_name = os.path.join(mid_outputs_path, f"mat_{idx}.txt")
+    input_name = os.path.join(mid_outputs_path, f"mat_{idx}.tmp")
     output_name = os.path.join(mid_outputs_path, f"similarity_{idx}")
     vcf_single_job(options, input_name, output_name)
     for proc in procs:
@@ -289,23 +286,20 @@ def vcf_single_job(options, input_name, output_dir):
 def analyze_by_df(options):
     """
     compute similarity from a genepop file.
-    First column should be name "ID" with individual names under it.
+    First column should be named "ID" with individual names under it.
     Rest columns names are the sites names.
     Every cell should be "x/y" where x and y are alleles marked any desired way.
     Missing data should be mark as "FAIL"
     :param options: running arguments
     :return: None, it saves the similarity and counts matrices in the output directory.
     """
-    s_time = time.time()
-    df = read_df_file(options.input_file)
+    df = read_df_file(options.input)
     loci_names = list(df.columns)
     loci_names.remove("ID")
     np_3d_arr, max_num_of_alleles = assign_allele_numbers(df, loci_names)
     similarity, counts = matrices012_to_similarity_matrix(np_3d_arr, options.weighted_metric)
     individual_names = list(df['ID'])
     save_df_outputs(options, similarity, counts, individual_names, options.output)
-    with open(os.path.join(options.output, "time.txt"), "w") as f:
-        f.write(str(time.time() - s_time))
 
 
 def main():
@@ -316,6 +310,7 @@ def main():
         analyze_by_vcf(input_format, arguments)
     elif 'DF' in input_format:
         analyze_by_df(arguments)
+    print("Done computation")
     print(f"It all took {(time.time() - s_time) / 60} minutes!")
 
 
