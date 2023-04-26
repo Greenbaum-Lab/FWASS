@@ -39,7 +39,7 @@ Do not use `/` anywhere else, and allele names should not have `/` in it. It is 
 Files should end with .vcf if not compressed and .vcf.gz if compressed with gzip.
 Files can be arbitrary large, and are not load simultaneously in memory.
 The only limitation we added to the general VCF format, is asking for every single line (locus)
-format, to start with GT (genotype). We find it is common to all dataset we were working with,
+format, to start with GT (genotype). We find it is common in all the datasets we were working with,
 and handling with the more general case will slow down the computation time.
 Don't worry, you don't have to check it yourself! If there is a line which the format is not in the correct order,
 the program will fail with a proper massage.
@@ -64,7 +64,7 @@ If you use .xlsx files, you might need to pip or conda install openpyxl as well.
 
 If the repository is your working directory, you can execute a computation with the following command line:
 
-`python3 compute_similarity -i <input file path> -o <output directory path> `
+`python3 compute_similarity.py -i <input file path> -o <output directory path> `
 
 output  directory has to be a name that is not yet exist. The program will open this directory automatically.
 If an exist directory name is given, the program will fail.
