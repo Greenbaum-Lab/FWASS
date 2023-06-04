@@ -15,6 +15,8 @@ def args_parser():
     parser.add_argument("-w", "--weighted", dest="weighted_metric", default=False, action="store_true",
                         help="If used, compute weighted metric, from Greenbaum et al., 2016. If not use, compute "
                              "unweighted metric from  Li and Horvitz, 1953")
+    parser.add_argument("--asd", default=False, action="store_true",
+                        help="Compute allele sharing distance (ASD) as in Xiaoyi Gaoa and Eden R. Martin, 2009")
     parser.add_argument("--max_memo", dest="max_mb", default=10, type=float,
                         help="Max number of cells (individuals multiply by sites) to use in a single matrix "
                              "(in millions). If you don't know, don't touch. If there are memory failures, reduce it"
@@ -25,10 +27,11 @@ def args_parser():
                         help="If assigned, compute similarity only based on the first n sites")
     parser.add_argument("--ns", dest="ns_format", default=False, action="store_true",
                         help="output similarity matrix in format to use in NetStruct Hierarchy")
+
     options = parser.parse_args()
     if options.output[-1] != '/':
         options.output += '/'
-    os.makedirs(options.output, exist_ok=False)
+    os.makedirs(options.output, exist_ok=True)
     return options
 
 

@@ -108,7 +108,7 @@ def vcf_to_small_matrices(input_format, options, mid_outputs_path):
               f" {num_sites_to_read} in each matrix.\n Currently computing the last few similarity matrices.")
 
 
-def matrices012_to_similarity_matrix(input_matrices, weighted):
+def matrices012_to_similarity_matrix(input_matrices, weighted, is_asd):
     """
     Compute similarity (see options in README)
     :param input_matrices: 3D of 012 matrix, first axis is per allele number,
@@ -124,7 +124,11 @@ def matrices012_to_similarity_matrix(input_matrices, weighted):
     pairwise_count_valid_sites = is_valid_matrix @ is_valid_matrix.T
     similarity = np.zeros_like(pairwise_count_valid_sites)
     for matrix in input_matrices:
-        if weighted:
+        if is_asd:
+            bin_matrix = (matrix > 0).astype(int)
+            similarity += bin_matrix @ bin_matrix.T
+            similarity += np.clip(matrix - 1, 0, 1) @ np.clip(matrix - 1, 0, 1).T
+        elif weighted:
             num_valid_genotypes = np.sum(is_valid_matrix, axis=0)
             allele_count = np.sum(matrix, axis=0)
             freq = allele_count / (2 * num_valid_genotypes)
@@ -132,6 +136,8 @@ def matrices012_to_similarity_matrix(input_matrices, weighted):
         else:
             similarity += matrix @ matrix.T * 2
 
+    if is_asd:
+        return 2 * pairwise_count_valid_sites - similarity, pairwise_count_valid_sites
     return 1/4 * similarity, pairwise_count_valid_sites
 
 
@@ -293,7 +299,7 @@ def vcf_single_job(options, input_name, output_dir):
     s_time = time.time()
     df = read_df_file(input_name)
     np_3d_arr, max_num_of_alleles = assign_allele_numbers(df, df.columns)
-    similarity, counts = matrices012_to_similarity_matrix(np_3d_arr, options.weighted_metric)
+    similarity, counts = matrices012_to_similarity_matrix(np_3d_arr, options.weighted_metric, options.asd)
     save_numpy_outputs(options, similarity, counts, output_dir)
     with open(os.path.join(output_dir, "time.txt"), "w") as f:
         f.write(str(time.time() - s_time))
@@ -313,7 +319,7 @@ def analyze_by_df(options):
     loci_names = list(df.columns)
     loci_names.remove("ID")
     np_3d_arr, max_num_of_alleles = assign_allele_numbers(df, loci_names)
-    similarity, counts = matrices012_to_similarity_matrix(np_3d_arr, options.weighted_metric)
+    similarity, counts = matrices012_to_similarity_matrix(np_3d_arr, options.weighted_metric, options.asd)
     individual_names = list(df['ID'])
     save_df_outputs(options, similarity, counts, individual_names, options.output)
 
