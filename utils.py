@@ -17,12 +17,14 @@ def args_parser():
                              "unweighted metric from  Li and Horvitz, 1953")
     parser.add_argument("--max_memo", dest="max_mb", default=10, type=float,
                         help="Max number of cells (individuals multiply by sites) to use in a single matrix "
-                             "(in millions). If you don't know, don't touch. If there are memory failures, reduce it."
+                             "(in millions). If you don't know, don't touch. If there are memory failures, reduce it"
                              " Default is 10")
     parser.add_argument("--max_threads", dest="max_threads", default=8, type=int,
                         help="Maximum number of threads to compute small matrices simultaneously")
     parser.add_argument("--max_sites", dest="max_sites", default=0, type=int,
                         help="If assigned, compute similarity only based on the first n sites")
+    parser.add_argument("--ns", dest="ns_format", default=False, action="store_true",
+                        help="output similarity matrix in format to use in NetStruct Hierarchy")
     options = parser.parse_args()
     if options.output[-1] != '/':
         options.output += '/'
@@ -101,3 +103,12 @@ def read_df_file(f_path):
     return df
 
 
+def df2ns_format(similarity_data_frame):
+    new_data = ""
+    number_of_cells_to_skip = 2
+    for col_name, line in similarity_data_frame.iterrows():
+        for num in line[number_of_cells_to_skip:]:
+            new_data += f'{num} '
+        number_of_cells_to_skip += 1
+        new_data = new_data[:-1] + '\n'
+    return new_data[:-1]

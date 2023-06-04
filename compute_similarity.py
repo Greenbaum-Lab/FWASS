@@ -3,7 +3,7 @@ import time
 from multiprocessing import Process
 import pandas as pd
 from tqdm import tqdm
-from utils import args_parser, read_df_file, parse_input_file_format, wait_for_jobs_to_be_done
+from utils import args_parser, read_df_file, parse_input_file_format, wait_for_jobs_to_be_done, df2ns_format
 import numpy as np
 import shutil
 import os
@@ -151,6 +151,14 @@ def save_numpy_outputs(options, sim_mat, count_mat, output_dir):
     np.save(count_out_path, count_mat)
 
 
+def save_ns_format(sim_df, counts_df, sim_pref, count_pref):
+    similarity = df2ns_format(sim_df)
+    counts = df2ns_format(counts_df)
+    with open(sim_pref + '.txt', "w") as f:
+        f.write(similarity)
+    with open(count_pref + '.txt', 'w') as f:
+        f.write(counts)
+
 def save_df_outputs(options, sim_mat, count_mat, individual_names, output_dir):
     """
     Save the numpy array as csv files with names of individuals.
@@ -162,12 +170,15 @@ def save_df_outputs(options, sim_mat, count_mat, individual_names, output_dir):
     :return: None
     """
     os.makedirs(output_dir, exist_ok=True)
-    sim_out_path = os.path.join(output_dir, "similarity" + '_weighted' * options.weighted_metric + '.csv')
-    count_out_path = os.path.join(output_dir, "count.csv")
-    count_df = pd.DataFrame(count_mat, columns=individual_names, index=individual_names)
+    sim_out_pref = os.path.join(output_dir, "similarity" + '_weighted' * options.weighted_metric)
+    count_out_pref = os.path.join(output_dir, "count")
+    counts_df = pd.DataFrame(count_mat, columns=individual_names, index=individual_names)
     similarity_df = pd.DataFrame(sim_mat / count_mat, columns=individual_names, index=individual_names)
-    similarity_df.to_csv(sim_out_path)
-    count_df.to_csv(count_out_path)
+    if options.ns_format:
+        save_ns_format(similarity_df, counts_df, sim_out_pref, count_out_pref)
+    else:
+        similarity_df.to_csv(sim_out_pref + '.csv')
+        counts_df.to_csv(count_out_pref + '.csv')
 
 
 def submit_all_matrices_ready(options, last_computed_matrix, mid_outputs_path, procs):
@@ -231,8 +242,13 @@ def merge_matrices(options, individual_names):
     similarity = sim_np / count_np
     similarity_df = pd.DataFrame(similarity, columns=individual_names, index=individual_names)
     counts_df = pd.DataFrame(count_np, columns=individual_names, index=individual_names)
-    similarity_df.to_csv(os.path.join(options.output, "similarity" + '_weighted' * options.weighted_metric + '.csv'))
-    counts_df.to_csv(os.path.join(options.output, 'counts.csv'))
+    simi_path_prefix = os.path.join(options.output, "similarity" + '_weighted' * options.weighted_metric)
+    counts_path_pref = os.path.join(options.output, 'counts')
+    if options.ns_format:
+        save_ns_format(similarity_df, counts_df, simi_path_prefix, counts_path_pref)
+    else:
+        similarity_df.to_csv(simi_path_prefix + '.csv')
+        counts_df.to_csv(counts_path_pref + '.csv')
     shutil.rmtree(mid_outputs_path)
 
 
