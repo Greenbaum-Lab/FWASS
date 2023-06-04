@@ -79,6 +79,9 @@ Optional flags:
   --max_threads: &emsp; Maximum number of threads to compute small matrices simultaneously. Default is 8.
   
   --max_sites: &emsp; If assigned, compute similarity only based on the first `n` sites.
+  
+  --ns: &emsp; Output will be in a format that is readable by NetStruct Hierarchy( with `-pm` flag).
+   The files extension will change from `.txt`  to `.csv`  
 
 ### output
 
