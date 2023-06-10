@@ -17,10 +17,11 @@ def args_parser():
                              "unweighted metric from  Li and Horvitz, 1953")
     parser.add_argument("--asd", default=False, action="store_true",
                         help="Compute allele sharing distance (ASD) as in Xiaoyi Gaoa and Eden R. Martin, 2009")
-    parser.add_argument("--max_memo", dest="max_mb", default=10, type=float,
+    parser.add_argument("--max_memo", dest="max_mb", default=1, type=float,
                         help="Max number of cells (individuals multiply by sites) to use in a single matrix "
-                             "(in millions). If you don't know, don't touch. If there are memory failures, reduce it"
-                             " Default is 10")
+                             "(in millions). If you don't know, don't touch. If there are memory failures, reduce it,"
+                             "if you have problem of writing too many files increase it."
+                             "The default is 1")
     parser.add_argument("--max_threads", dest="max_threads", default=8, type=int,
                         help="Maximum number of threads to compute small matrices simultaneously")
     parser.add_argument("--max_sites", dest="max_sites", default=0, type=int,
@@ -96,7 +97,12 @@ def read_df_file(f_path):
                 non_fail = [e for e in line if e != "FAIL"]
                 if len(non_fail) == 0:
                     line_indices_to_remove.append(idx)
+                    continue
                 alleles = non_fail[0].split('/')
+                if len(alleles) != 2:
+                    print("WARNING! : There are some sites with number of alleles per individual different than 2!")
+                    line_indices_to_remove.append(idx)
+                    continue
                 if all([non_fail[0] == e for e in non_fail]) and alleles[0] == alleles[1]:
                     line_indices_to_remove.append(idx)
             data_split = [j for i, j in enumerate(data_split) if i not in line_indices_to_remove]
