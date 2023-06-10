@@ -111,6 +111,8 @@ def vcf_to_small_matrices(input_format, options, mid_outputs_path):
 def matrices012_to_similarity_matrix(input_matrices, weighted, is_asd):
     """
     Compute similarity (see options in README)
+    :param is_asd: if True, compute allele sharing distance (asd) instead of similarity by eq 9 in
+      Xiaoyi Gaoa and Eden R. Martin, 2009.
     :param input_matrices: 3D of 012 matrix, first axis is per allele number,
      second axis is per individual, third axis is per locus. In cell[x,y,z] there is a count
      of how may times do individual y has the allele x in locus z. It can be up to 2.

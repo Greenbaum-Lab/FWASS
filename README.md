@@ -1,9 +1,17 @@
 # FWASS
 
-This repo computes similarity between individuals based on genetic variation data.
-It can compute either a frequency-weighted (Greenbaum et al., 2016),
-or non frequency-weighted metric (Li and Horvitz, 1953). 
-This computation method uses an assumption that the maximum number of alleles per site is low, and benefit from matrix multiplication fast algorithm to speed up the computation.
+This repo computes similarities and distances between individuals based on genetic variation data.
+
+##### Possible computations:
+
+* Frequency-weighted (Greenbaum et al., 2016).
+
+* Non frequency-weighted metric (Li and Horvitz, 1953). 
+
+* Allele sharing distance (ASD) (Eq 9 in Xiaoyi Gaoa and Eden R. Martin, 2009).
+
+This computation method uses an assumption that the maximum number of alleles per site is low,
+ and benefit from matrix multiplication fast algorithm to speed up the computation.
 
 
 ## How to use FWASS?
