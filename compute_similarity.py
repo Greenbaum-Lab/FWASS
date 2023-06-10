@@ -73,7 +73,7 @@ def vcf_to_small_matrices(input_format, options, mid_outputs_path):
         num_of_indv = len(individuals)
         num_sites_to_read = int(max_num_of_cells // num_of_indv)
         matrices_counter = 0
-        sites_names = []
+        is_empty_matrix = True
         current_matrix = ""
         sites_counter = 1
         pbar.update(1)
@@ -83,29 +83,28 @@ def vcf_to_small_matrices(input_format, options, mid_outputs_path):
                 with open(os.path.join(mid_outputs_path, f'mat_{matrices_counter}.tmp'), "w") as g:
                     g.write(current_matrix)
 
-                sites_names = []
+                is_matrix_empty = True
                 current_matrix = ""
                 matrices_counter += 1
             line = last_line.split()
             assert(len(line[9:]) == len(individuals) and line[format_dict["FORMAT"]].startswith("GT"))
             indv_gt = ['FAIL' if '.' in e[:3] else e[:3].replace('|', '/') for e in line[9:]]
             current_matrix += "\t".join(indv_gt) + '\n'
-            site_uniq_name = f"{line[format_dict['#CHROM']]}_{line[format_dict['POS']]}_{line[format_dict['ID']]}"
-            sites_names.append(site_uniq_name)
+            is_matrix_empty = False
             sites_counter += 1
             last_line = f.readline().decode()
             pbar.update(1)
             if options.max_sites and sites_counter > options.max_sites:
                 break
 
-        if sites_names:
+        if not is_matrix_empty:
             with open(os.path.join(mid_outputs_path, f'mat_{matrices_counter}.tmp'), "w") as g:
                 g.write(current_matrix)
 
         with open(os.path.join(mid_outputs_path, "done.txt"), "w") as f:
             f.write("\t".join(individuals))
         print(f"Done reading VCF file!\n{sites_counter -1} sites in total, divided over {matrices_counter + 1} matrices."
-              f" {num_sites_to_read} in each matrix.\n Currently computing the last few similarity matrices.")
+              f" Max of {num_sites_to_read} in each matrix.\n Currently computing the last few similarity matrices.")
 
 
 def matrices012_to_similarity_matrix(input_matrices, weighted, is_asd):
