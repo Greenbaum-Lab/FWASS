@@ -86,35 +86,38 @@ def read_df_file(f_path):
     elif f_path.endswith(".csv"):
         df = pd.read_csv(f_path)
         df = filter_out_bad_sites(df)
-    elif f_path.endswith('.tmp'):
-        with open(f_path, "r") as f:
-            data = f.readlines()
-            if data[-1] == '\n':
-                data = data[:-1]
-            data_split = [e[:-1].split('\t') for e in data]
-            line_indices_to_remove = []
-            for idx, line in enumerate(data_split):
-                non_fail = [e for e in line if e != "FAIL"]
-                if len(non_fail) == 0:
-                    line_indices_to_remove.append(idx)
-                    continue
-                alleles = non_fail[0].split('/')
-                if len(alleles) != 2:
-                    print("WARNING! : There are some sites with number of alleles per individual different than 2!")
-                    line_indices_to_remove.append(idx)
-                    continue
-                if all([non_fail[0] == e for e in non_fail]) and alleles[0] == alleles[1]:
-                    line_indices_to_remove.append(idx)
-            data_split = [j for i, j in enumerate(data_split) if i not in line_indices_to_remove]
-            df = pd.DataFrame(data_split).T
     else:
         assert False, "ERROR Parsing GENEpop format file"
     return df
 
 
+def read_vcf_tmp_file(f_path):
+    with open(f_path, "r") as f:
+        data = f.readlines()
+    if data[-1] == '\n':
+        data = data[:-1]
+    data_split = [e[:-1].split('\t') for e in data]
+    line_indices_to_remove = []
+    for idx, line in enumerate(data_split):
+        non_fail = [e for e in line if e != "FAIL"]
+        if len(non_fail) == 0:
+            line_indices_to_remove.append(idx)
+            continue
+        alleles = non_fail[0].split('/')
+        if len(alleles) != 2:
+            print("WARNING! : There are some sites with number of alleles per individual different than 2!")
+            line_indices_to_remove.append(idx)
+            continue
+        if all([non_fail[0] == e for e in non_fail]) and alleles[0] == alleles[1]:
+            line_indices_to_remove.append(idx)
+    data_split = [j for i, j in enumerate(data_split) if i not in line_indices_to_remove]
+    df = pd.DataFrame(data_split).T
+    return df
+
+
 def df2ns_format(similarity_data_frame):
     new_data = ""
-    number_of_cells_to_skip = 2
+    number_of_cells_to_skip = 1
     for col_name, line in similarity_data_frame.iterrows():
         for num in line[number_of_cells_to_skip:]:
             new_data += f'{num} '

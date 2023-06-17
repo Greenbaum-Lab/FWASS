@@ -3,7 +3,8 @@ import time
 from multiprocessing import Process
 import pandas as pd
 from tqdm import tqdm
-from utils import args_parser, read_df_file, parse_input_file_format, wait_for_jobs_to_be_done, df2ns_format
+from utils import args_parser, read_df_file, parse_input_file_format, wait_for_jobs_to_be_done, df2ns_format, \
+    read_vcf_tmp_file
 import numpy as np
 import shutil
 import os
@@ -298,7 +299,7 @@ def vcf_single_job(options, input_name, output_dir):
     :return: None, it saves the outputs in output_dir.
     """
     s_time = time.time()
-    df = read_df_file(input_name)
+    df = read_vcf_tmp_file(input_name)
     np_3d_arr, max_num_of_alleles = assign_allele_numbers(df, df.columns)
     similarity, counts = matrices012_to_similarity_matrix(np_3d_arr, options.weighted_metric, options.asd)
     save_numpy_outputs(options, similarity, counts, output_dir)
