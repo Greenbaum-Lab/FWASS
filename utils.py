@@ -82,12 +82,11 @@ def filter_out_bad_sites(df):
 def read_df_file(f_path):
     if f_path.endswith(".xlsx"):
         df = pd.read_excel(f_path)
-        df = filter_out_bad_sites(df)
     elif f_path.endswith(".csv"):
         df = pd.read_csv(f_path)
-        df = filter_out_bad_sites(df)
     else:
         assert False, "ERROR Parsing GENEpop format file"
+    df = filter_out_bad_sites(df)
     return df
 
 
@@ -98,6 +97,7 @@ def read_vcf_tmp_file(f_path):
         data = data[:-1]
     data_split = [e[:-1].split('\t') for e in data]
     line_indices_to_remove = []
+    num_of_not_diploid_sites = 0
     for idx, line in enumerate(data_split):
         non_fail = [e for e in line if e != "FAIL"]
         if len(non_fail) == 0:
@@ -105,14 +105,14 @@ def read_vcf_tmp_file(f_path):
             continue
         alleles = non_fail[0].split('/')
         if len(alleles) != 2:
-            print("WARNING! : There are some sites with number of alleles per individual different than 2!")
+            num_of_not_diploid_sites += 1
             line_indices_to_remove.append(idx)
             continue
         if all([non_fail[0] == e for e in non_fail]) and alleles[0] == alleles[1]:
             line_indices_to_remove.append(idx)
     data_split = [j for i, j in enumerate(data_split) if i not in line_indices_to_remove]
     df = pd.DataFrame(data_split).T
-    return df
+    return df, num_of_not_diploid_sites
 
 
 def df2ns_format(similarity_data_frame):

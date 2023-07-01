@@ -74,7 +74,7 @@ def vcf_to_small_matrices(input_format, options, mid_outputs_path):
         num_of_indv = len(individuals)
         num_sites_to_read = int(max_num_of_cells // num_of_indv)
         matrices_counter = 0
-        is_empty_matrix = True
+        is_matrix_empty = True
         current_matrix = ""
         sites_counter = 1
         pbar.update(1)
@@ -83,8 +83,6 @@ def vcf_to_small_matrices(input_format, options, mid_outputs_path):
             if sites_counter % num_sites_to_read == 0:
                 with open(os.path.join(mid_outputs_path, f'mat_{matrices_counter}.tmp'), "w") as g:
                     g.write(current_matrix)
-
-                is_matrix_empty = True
                 current_matrix = ""
                 matrices_counter += 1
             line = last_line.split()
@@ -240,10 +238,13 @@ def merge_matrices(options, individual_names):
     :param individual_names: list of individual names
     :return: None, it saves the similarity and counts matrices in the output directory as csv files.
     """
+    sum_of_non_diploid = 0
     mid_outputs_path = os.path.join(options.output, "mid_res")
     similarity_dirs = [os.path.join(mid_outputs_path, e) for e in os.listdir(mid_outputs_path) if 'similarity' in e]
     sim_np, count_np = get_sim_and_count_from_directory(options, similarity_dirs[0])
     for directory in tqdm(similarity_dirs[1:], desc="Merging matrices "):
+        with open(os.path.join(directory, 'monoploid.txt'), "r") as f:
+            sum_of_non_diploid += int(f.read())
         new_sim_np, new_count_np = get_sim_and_count_from_directory(options, directory)
         sim_np += new_sim_np
         count_np += new_count_np
@@ -257,6 +258,11 @@ def merge_matrices(options, individual_names):
     else:
         similarity_df.to_csv(simi_path_prefix + '.csv')
         counts_df.to_csv(counts_path_pref + '.csv')
+    with open(os.path.join(similarity_dirs[0], 'monoploid.txt'), "r") as f:
+        sum_of_non_diploid += int(f.read())
+    if sum_of_non_diploid > 0:
+        print(f"WARNING! : There are {sum_of_non_diploid} sites with number of alleles per individual different than 2!"
+              f"These sites were ignored")
     shutil.rmtree(mid_outputs_path)
 
 
@@ -299,13 +305,14 @@ def vcf_single_job(options, input_name, output_dir):
     :return: None, it saves the outputs in output_dir.
     """
     s_time = time.time()
-    df = read_vcf_tmp_file(input_name)
+    df, num_of_not_diploid_sites = read_vcf_tmp_file(input_name)
     np_3d_arr, max_num_of_alleles = assign_allele_numbers(df, df.columns)
     similarity, counts = matrices012_to_similarity_matrix(np_3d_arr, options.weighted_metric, options.asd)
     save_numpy_outputs(options, similarity, counts, output_dir)
     with open(os.path.join(output_dir, "time.txt"), "w") as f:
         f.write(str(time.time() - s_time))
-
+    with open(os.path.join(output_dir, "monoploid.txt"), "w") as f:
+        f.write(str(num_of_not_diploid_sites))
 
 def analyze_by_df(options):
     """
