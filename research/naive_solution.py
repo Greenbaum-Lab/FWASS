@@ -111,6 +111,7 @@ class Naive:
         """
         start_time = time.time()
         read_file_func = gzip.open if "GZ" in input_format else open
+        # pbar = tqdm(desc="Run over sites")
         with read_file_func(file_name, "rb") as f:
             last_line = f.readline().decode()
             while last_line.startswith("##"):
@@ -122,6 +123,7 @@ class Naive:
             metric_mat = np.zeros(shape=(num_of_indv, num_of_indv))
             count_mat = np.zeros(shape=(num_of_indv, num_of_indv))
             sites_counter = 1
+            # pbar.update(1)
             last_line = f.readline().decode()
             while last_line:
                 line = last_line.split()
@@ -131,6 +133,7 @@ class Naive:
                     self.single_site_method(indv_gt, metric_mat, count_mat)
                 sites_counter += 1
                 last_line = f.readline().decode()
+                # pbar.update(1)
         metric_mat += metric_mat.T
         count_mat += count_mat.T
         np.fill_diagonal(count_mat, val=1)

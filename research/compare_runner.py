@@ -41,11 +41,11 @@ def file_name_to_indv(file_name):
 if __name__ == '__main__':
     arguments = args_parser()
     os.makedirs(arguments.output, exist_ok=True)
-    max_alleles_num = [4, 10, 100]
+    max_alleles_num = [4, 10, 50]
     avg_times = {'naive': [], 'fast': []}; avg_times.update({f'fast {x}': [] for x in max_alleles_num})
     std_times = {'naive': [], 'fast': []}; std_times.update({f'fast {x}': [] for x in max_alleles_num})
-    num_indv = 50 if MOCK else 100
-    num_snps_lst = [200, 500, 2000, 10_000] if MOCK else [500, 1000, 2000, 5000, 10_000, 20_000, 50_000, 75_000,
+    num_indv = 100
+    num_snps_lst = [1_000, 10_000, 50_000] if MOCK else [500, 1000, 2000, 5000, 10_000, 20_000, 50_000, 75_000,
                                                           100_000, 200_000, 500_000, 1_000_000]
     repetitions = 2 if MOCK else 10
     arguments.save_outputs = False
@@ -59,9 +59,9 @@ if __name__ == '__main__':
     computers['naive'] = Naive(arguments, input=arguments.input, output=os.path.join(arguments.output, 'naive'))
     for idx, name in enumerate(computers.keys()):
         colors[name] = list(mcolors.TABLEAU_COLORS.keys())[idx]
-    for num_snps in tqdm(num_snps_lst, desc='Number of SNPs'):
+    for num_snps in num_snps_lst:   # tqdm(num_snps_lst, desc='Number of SNPs'):
         file_path = os.path.join(arguments.output, get_file_name(num_indv, num_snps))
-        for rep in tqdm(range(repetitions), desc='repetition', leave=False):
+        for rep in range(repetitions):   # tqdm(range(repetitions), desc='repetition', leave=False):
             write_random_vcf(num_indv, num_snps, file_path, num_alleles=2)
             computers['naive'].vcf_to_metric('VCF', file_path, rep)
             computers['fast'].vcf_to_metric('VCF', file_path, rep)
@@ -93,4 +93,3 @@ if __name__ == '__main__':
     plt.legend()
     plt.xscale('log')
     plt.savefig(os.path.join(arguments.output, "naive_running_time_comparison.svg"))
-    plt.show()
