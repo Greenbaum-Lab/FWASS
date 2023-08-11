@@ -45,7 +45,7 @@ if __name__ == '__main__':
     avg_times = {'naive': [], 'fast': []}; avg_times.update({f'fast {x}': [] for x in max_alleles_num})
     std_times = {'naive': [], 'fast': []}; std_times.update({f'fast {x}': [] for x in max_alleles_num})
     num_indv = 100
-    num_snps_lst = [1_000, 10_000, 50_000] if MOCK else [500, 1000, 2000, 5000, 10_000, 20_000, 50_000, 75_000,
+    num_snps_lst = [1_000, 10_000] if MOCK else [500, 1000, 2000, 5000, 10_000, 20_000, 50_000, 75_000,
                                                           100_000, 200_000, 500_000, 1_000_000]
     repetitions = 2 if MOCK else 10
     arguments.save_outputs = False
