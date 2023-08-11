@@ -65,7 +65,7 @@ def vcf_to_small_matrices(input_format, options, mid_outputs_path, input_file_pa
     """
     read_file_func = gzip.open if "GZ" in input_format else open
     max_num_of_cells = options.max_mb * 10**6
-    pbar = tqdm(desc="Run over sites")
+    # pbar = tqdm(desc="Run over sites")
     with read_file_func(input_file_path, "rb") as f:
         last_line = f.readline().decode()
         while last_line.startswith("##"):
@@ -79,7 +79,7 @@ def vcf_to_small_matrices(input_format, options, mid_outputs_path, input_file_pa
         is_matrix_empty = True
         current_matrix = ""
         sites_counter = 1
-        pbar.update(1)
+        # pbar.update(1)
         last_line = f.readline().decode()
         while last_line:
             if sites_counter % num_sites_to_read == 0:
@@ -94,7 +94,7 @@ def vcf_to_small_matrices(input_format, options, mid_outputs_path, input_file_pa
             is_matrix_empty = False
             sites_counter += 1
             last_line = f.readline().decode()
-            pbar.update(1)
+            # pbar.update(1)
             if options.max_sites and sites_counter > options.max_sites:
                 break
 
@@ -246,7 +246,7 @@ def merge_matrices(options, individual_names):
     mid_outputs_path = os.path.join(options.output, "mid_res")
     similarity_dirs = [os.path.join(mid_outputs_path, e) for e in os.listdir(mid_outputs_path) if 'similarity' in e]
     sim_np, count_np = get_sim_and_count_from_directory(options, similarity_dirs[0])
-    for directory in tqdm(similarity_dirs[1:], desc="Merging matrices "):
+    for directory in similarity_dirs[1:]:
         with open(os.path.join(directory, 'monoploid.txt'), "r") as f:
             sum_of_non_diploid += int(f.read())
         new_sim_np, new_count_np = get_sim_and_count_from_directory(options, directory)
