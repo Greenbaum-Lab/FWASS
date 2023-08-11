@@ -11,7 +11,7 @@ from research.fast_solution import Fast
 from research.naive_solution import Naive
 from utils import args_parser, write_random_vcf
 
-MOCK = True
+MOCK = False
 
 
 def get_file_name(num_indv, num_snps):
