@@ -1,3 +1,4 @@
+import json
 import os
 import time
 
@@ -44,8 +45,8 @@ if __name__ == '__main__':
     avg_times = {'naive': [], 'fast': []}; avg_times.update({f'fast {x}': [] for x in max_alleles_num})
     std_times = {'naive': [], 'fast': []}; std_times.update({f'fast {x}': [] for x in max_alleles_num})
     num_indv = 50 if MOCK else 100
-    num_snps_lst = [200, 500, 2000] if MOCK else [500, 1000, 2000, 5000, 10_000, 20_000, 50_000, 75_000, 100_000, 200_000,
-                                                  500_000, 1_000_000]
+    num_snps_lst = [200, 500, 2000, 10_000] if MOCK else [500, 1000, 2000, 5000, 10_000, 20_000, 50_000, 75_000,
+                                                          100_000, 200_000, 500_000, 1_000_000]
     repetitions = 2 if MOCK else 10
     arguments.save_outputs = False
     computers = {}
@@ -74,6 +75,10 @@ if __name__ == '__main__':
             avg_times[name].append(np.mean(alg.times))
             std_times[name].append(np.std(alg.times))
             alg.times = []
+    with open(os.path.join(arguments.output, "mean_times.json"), "w") as f:
+        json.dump(avg_times, f)
+    with open(os.path.join(arguments.output, "std_times.json"), "w") as f:
+        json.dump(std_times, f)
     print(avg_times)
     print(std_times)
     for name in computers.keys():
@@ -87,6 +92,5 @@ if __name__ == '__main__':
     plt.title(f"Similarity computation time with {num_indv} individuals")
     plt.legend()
     plt.xscale('log')
-    plt.yscale('log')
     plt.savefig(os.path.join(arguments.output, "naive_running_time_comparison.svg"))
     plt.show()
