@@ -11,7 +11,7 @@ import warnings
 warnings.filterwarnings("ignore")
 
 # Slower if compiled! Don't use numba
-@jit(nopython=True)
+# @jit(nopython=True)
 def single_site_asd_compute(indv_gt, sim_mat, count_mat):
     len2_sort = lambda x: [x[1], x[0]] if x[1] < x[0] else x
     allele_split = [e.split('/') for e in indv_gt]
@@ -91,9 +91,8 @@ class Naive:
                                            'weighted': .25,
                                            'asd': 1}
 
-    def __init__(self, arguments, input, output):
+    def __init__(self, arguments, output):
         self.arguments = arguments
-        self.input_data_dir = input
         os.makedirs(output, exist_ok=True)
         self.output_dir = output
         self.single_site_method = self.method_name2func[arguments.method]
@@ -111,7 +110,6 @@ class Naive:
         """
         start_time = time.time()
         read_file_func = gzip.open if "GZ" in input_format else open
-        # pbar = tqdm(desc="Run over sites")
         with read_file_func(file_name, "rb") as f:
             last_line = f.readline().decode()
             while last_line.startswith("##"):
@@ -123,7 +121,6 @@ class Naive:
             metric_mat = np.zeros(shape=(num_of_indv, num_of_indv))
             count_mat = np.zeros(shape=(num_of_indv, num_of_indv))
             sites_counter = 1
-            # pbar.update(1)
             last_line = f.readline().decode()
             while last_line:
                 line = last_line.split()
@@ -133,7 +130,6 @@ class Naive:
                     self.single_site_method(indv_gt, metric_mat, count_mat)
                 sites_counter += 1
                 last_line = f.readline().decode()
-                # pbar.update(1)
         metric_mat += metric_mat.T
         count_mat += count_mat.T
         np.fill_diagonal(count_mat, val=1)
@@ -150,15 +146,15 @@ class Naive:
         df.to_csv(output_path)
 
 
-def main():
-    arguments = args_parser()
-    naive = Naive(arguments, input=arguments.input, output=arguments.output)
-    file_path = "C:\\Users\\shaharma\\LAB\\test.vcf"
-    if not os.path.exists(file_path):
-        write_random_vcf(100, 10000, file_path, num_alleles=2)
-    naive.vcf_to_metric('VCF', file_path, 0)
-    print("Done computation")
-
-
-if __name__ == '__main__':
-    main()
+# def main():
+#     arguments = args_parser()
+#     naive = Naive(arguments, input=arguments.input, output=arguments.output)
+#     file_path = "C:\\Users\\shaharma\\LAB\\test.vcf"
+#     if not os.path.exists(file_path):
+#         write_random_vcf(100, 10000, file_path, num_alleles=2)
+#     naive.vcf_to_metric('VCF', file_path, 0)
+#     print("Done computation")
+#
+#
+# if __name__ == '__main__':
+#     main()

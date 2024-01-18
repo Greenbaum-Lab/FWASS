@@ -8,11 +8,9 @@ from utils import args_parser, read_df_file, parse_input_file_format, wait_for_j
 import numpy as np
 import shutil
 import os
-# from numba import jit
+from numba import jit
 
 
-#Todo : can we compile that method?? Might boost!
-# @jit(nopython=True)
 def assign_allele_numbers(data_df, loci_names):
     """
     Give a natural number (including 0) to each allele, without loss of generality.
@@ -53,7 +51,6 @@ def assign_allele_numbers(data_df, loci_names):
     np_arr = np.array(new_arrs)
 
     return np_arr, max_num_of_alleles
-
 
 def vcf_to_small_matrices(input_format, options, mid_outputs_path, input_file_path, verbose):
     """

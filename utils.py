@@ -9,7 +9,7 @@ METHODS = ['asd', 'similarity']
 
 def args_parser():
     parser = argparse.ArgumentParser()
-    parser.add_argument("-i", "--input", dest="input", required=True,
+    parser.add_argument("-i", "--input", dest="input",
                         help="input file in genepop (xlsx) format with raw sequencing")
     parser.add_argument("-o", "--output", dest="output", required=True,
                         help="Name of output directory. Program will generate a new directory with that name,"
@@ -21,8 +21,8 @@ def args_parser():
                              "and the default if not used is same as setting 0. If this flag is used with asd method, "
                              "the program will fail.")
     parser.add_argument("--method", required=True,
-                        help="Method to use. Deafalut is allele sharing distance (ASD) as in Xiaoyi Gaoa and Eden R. Martin, 2009."
-                             " The other option is similarity. If used similarity see the 'weighted' flag for info "
+                        help="Method to use. Use 'asd' for allele sharing distance (ASD) as in Xiaoyi Gaoa and Eden R. Martin, 2009."
+                             " The other option is 'similarity'. If used similarity see the 'weighted' flag for info "
                              "between the 3 options to use.")
     parser.add_argument("--max_memo", dest="max_mb", default=1, type=float,
                         help="Max number of cells (individuals multiply by sites) to use in a single matrix "
