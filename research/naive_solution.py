@@ -12,7 +12,7 @@ warnings.filterwarnings("ignore")
 
 # Slower if compiled! Don't use numba
 # @jit(nopython=True)
-def single_site_asd_compute(indv_gt, asd_mat, count_mat):
+def single_site_asd_compute(indv_gt, asd_mat, count_mat, weight=None):
     len2_sort = lambda x: [x[1], x[0]] if x[1] < x[0] else x
     allele_split = [e.split('/') for e in indv_gt]
     for idx1, gt1 in enumerate(allele_split):
@@ -21,8 +21,8 @@ def single_site_asd_compute(indv_gt, asd_mat, count_mat):
         count_mat[idx1, idx1] += 0.5   # based on the fact its a diploid
         a = gt1[0]
         b = gt1[1]
-        idx2 = idx1 + 1
-        for gt2 in allele_split[idx1 + 1:]:
+        idx2 = idx1
+        for gt2 in allele_split[idx1:]:
             if gt2 == ["FAIL"]:
                 idx2 += 1
                 continue
@@ -37,8 +37,8 @@ def single_site_asd_compute(indv_gt, asd_mat, count_mat):
     return
 
 
-@jit(nopython=True)
-def single_site_sim_weighted_compute(indv_gt, freq_weight, sim_mat, count_mat):
+# @jit(nopython=True)
+def single_site_sim_weighted_compute(indv_gt, sim_mat, count_mat, freq_weight=1):
     allele_split = [e.split('/') for e in indv_gt]
     non_fails = [e for e in allele_split if e != ["FAIL"]]
     if len(non_fails) == 0:
@@ -54,8 +54,8 @@ def single_site_sim_weighted_compute(indv_gt, freq_weight, sim_mat, count_mat):
             continue
         a = gt1[0]
         b = gt1[1]
-        idx2 = idx1 + 1
-        for gt2 in allele_split[idx1 + 1:]:
+        idx2 = idx1
+        for gt2 in allele_split[idx1:]:
             if gt2 == ["FAIL"]:
                 idx2 += 1
                 continue
@@ -65,15 +65,15 @@ def single_site_sim_weighted_compute(indv_gt, freq_weight, sim_mat, count_mat):
     return
 
 @jit(nopython=True)
-def single_site_sim_compute(indv_gt, sim_mat, count_mat):
+def single_site_sim_compute(indv_gt, sim_mat, count_mat, weight=None):
     allele_split = [e.split('/') for e in indv_gt]
     for idx1, gt1 in enumerate(allele_split):
         if gt1 == ["FAIL"]:
             continue
         a = gt1[0]
         b = gt1[1]
-        idx2 = idx1 + 1
-        for gt2 in allele_split[idx1 + 1:]:
+        idx2 = idx1
+        for gt2 in allele_split[idx1:]:
             if gt2 == ["FAIL"]:
                 idx2 += 1
                 continue
@@ -96,9 +96,10 @@ class Naive:
         self.arguments = arguments
         os.makedirs(output, exist_ok=True)
         self.output_dir = output
-        self.single_site_method = self.method_name2func[arguments.method]
+        method_name = 'weighted' if isinstance(arguments.weight, float) else arguments.method
+        self.single_site_method = self.method_name2func[method_name]
         self.single_site_method(["FAIL"], np.zeros((2, 2)), np.zeros((2, 2)))  # Compile out of time measure
-        self.multiplication_constant = self.method_name2constant_multiplication[arguments.method]
+        self.multiplication_constant = self.method_name2constant_multiplication[method_name]
         self.times = []
 
     def vcf_to_metric(self, input_format, file_name, iter_num):
@@ -128,16 +129,18 @@ class Naive:
                 assert(len(line[9:]) == len(individuals) and line[format_dict["FORMAT"]].startswith("GT"))
                 indv_gt = ['FAIL' if '.' in e[:3] else e[:3].replace('|', '/') for e in line[9:]]
                 if not all([e == indv_gt[0] for e in indv_gt]):
-                    self.single_site_method(indv_gt, metric_mat, count_mat)
+                    self.single_site_method(indv_gt, metric_mat, count_mat, self.arguments.weight)
                 sites_counter += 1
                 last_line = f.readline().decode()
         metric_mat += metric_mat.T
         count_mat += count_mat.T
-        metric = np.true_divide(metric_mat, count_mat)
-        metric *= self.multiplication_constant
-        np.fill_diagonal(metric, val=0)
-        df = pd.DataFrame(metric, index=individuals, columns=individuals)
+        self.metric = np.true_divide(metric_mat, count_mat)
+        self.metric *= self.multiplication_constant
+        df = pd.DataFrame(self.metric, index=individuals, columns=individuals)
+        np.fill_diagonal(count_mat, count_mat.diagonal() / 2)
         count_df = pd.DataFrame(count_mat, index=individuals, columns=individuals)
-        df.to_csv(os.path.join(self.output_dir, f'{self.arguments.method}.csv'))
+
+        file_name = 'similarity_weighted' if isinstance(self.arguments.weight, float) else self.arguments.method
+        df.to_csv(os.path.join(self.output_dir, f'{file_name}.csv'))
         count_df.to_csv(os.path.join(self.output_dir, 'count.csv'))
         self.times.append(time.time() - start_time)

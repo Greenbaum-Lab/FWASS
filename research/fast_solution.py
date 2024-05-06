@@ -11,7 +11,7 @@ class Fast(Naive):
         temp_args = copy(self.arguments)
         temp_args.output = self.output_dir
         start_time = time.time()
-        single_runner = AbstractMetricCompute(temp_args).get_object()
-        single_runner.analyze_file(verbose=False)
+        self.single_runner = AbstractMetricCompute(temp_args).get_object()
+        self.single_runner.analyze_file(verbose=False)
         self.times.append(time.time() - start_time)
 

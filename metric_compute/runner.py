@@ -136,9 +136,9 @@ class AbstractMetricCompute:
             new_metric_np, new_count_np = get_metric_and_count_from_directory(options, directory)
             metric_np += new_metric_np
             count_np += new_count_np
-        metric = metric_np / count_np
+        self.metric = metric_np / count_np
 
-        self.output_writer.save_outputs(metric, count_np, individual_names=individual_names)
+        self.output_writer.save_outputs(self.metric, count_np, individual_names=individual_names)
 
         with open(os.path.join(metric_dirs[0], 'monoploid.txt'), "r") as f:
             sum_of_non_diploid += int(f.read())

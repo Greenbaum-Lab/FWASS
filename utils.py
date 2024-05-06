@@ -22,6 +22,8 @@ def args_parser(parser=None):
 
 def handle_args(parser):
     options = parser.parse_args()
+    if isinstance(options.weight, str):
+        options.weight = float(options.weight)
     if options.method == 'asd' and not isinstance(options.weight, bool):
         raise Exception("ASD metric doesn't support a weighted method. Did you mean to use --method similarity?")
     if options.method not in METHODS:
