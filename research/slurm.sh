@@ -5,7 +5,7 @@
 #SBATCH --cpus-per-task=1 # Request that ncpus be allocated per process.
 
 module load python
-source /sci/labs/gilig/shahar.mazie/icore-data/snpnmi_venv/bin/activate.csh
+source /sci/labs/gilig/shahar.mazie/icore-data/snpnmi_venv/bin/activate
 
 echo "Start running jobs $comp"
 mkdir /sci/labs/gilig/shahar.mazie/icore-data/FWASS_research/$comp/
