@@ -36,7 +36,7 @@ class Comparator:
                 d1_file = f.read()
             with open(os.path.join(dir2, file), 'r') as f:
                 d2_file = f.read()
-            assert d1_file == d2_file, f"There are differences in file {file}"
+            assert d1_file == d2_file, f"There are differences in file {os.path.join(dir1, file)}"
             os.remove(os.path.join(dir1, file))
             os.remove(os.path.join(dir2, file))
 
