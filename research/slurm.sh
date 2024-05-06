@@ -7,8 +7,8 @@
 module load python
 source /sci/labs/gilig/shahar.mazie/icore-data/snpnmi_venv/bin/activate.csh
 
-echo "Start running jobs $0"
-mkdir /sci/labs/gilig/shahar.mazie/icore-data/FWASS_research/$0/
-srun python /sci/labs/gilig/shahar.mazie/icore-data/code/FWASS/research/compare_runner.py -o /sci/labs/gilig/shahar.mazie/icore-data/FWASS_research/$0/asd --method asd --mock --comparison_name $0
-srun python /sci/labs/gilig/shahar.mazie/icore-data/code/FWASS/research/compare_runner.py -o /sci/labs/gilig/shahar.mazie/icore-data/FWASS_research/$0/similarity --method similarity --mock --comparison_name $0
-srun python /sci/labs/gilig/shahar.mazie/icore-data/code/FWASS/research/compare_runner.py -o /sci/labs/gilig/shahar.mazie/icore-data/FWASS_research/$0/weighted_similarity --method similarity -w 1 --mock --comparison_name $0
+echo "Start running jobs $1"
+mkdir /sci/labs/gilig/shahar.mazie/icore-data/FWASS_research/$1/
+srun python /sci/labs/gilig/shahar.mazie/icore-data/code/FWASS/research/compare_runner.py -o /sci/labs/gilig/shahar.mazie/icore-data/FWASS_research/$1/asd --method asd --mock --comparison_name $0
+srun python /sci/labs/gilig/shahar.mazie/icore-data/code/FWASS/research/compare_runner.py -o /sci/labs/gilig/shahar.mazie/icore-data/FWASS_research/$1/similarity --method similarity --mock --comparison_name $0
+srun python /sci/labs/gilig/shahar.mazie/icore-data/code/FWASS/research/compare_runner.py -o /sci/labs/gilig/shahar.mazie/icore-data/FWASS_research/$1/weighted_similarity --method similarity -w 1 --mock --comparison_name $0
