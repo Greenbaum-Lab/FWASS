@@ -12,12 +12,13 @@ warnings.filterwarnings("ignore")
 
 # Slower if compiled! Don't use numba
 # @jit(nopython=True)
-def single_site_asd_compute(indv_gt, sim_mat, count_mat):
+def single_site_asd_compute(indv_gt, asd_mat, count_mat):
     len2_sort = lambda x: [x[1], x[0]] if x[1] < x[0] else x
     allele_split = [e.split('/') for e in indv_gt]
     for idx1, gt1 in enumerate(allele_split):
         if gt1 == ["FAIL"]:
             continue
+        count_mat[idx1, idx1] += 0.5   # based on the fact its a diploid
         a = gt1[0]
         b = gt1[1]
         idx2 = idx1 + 1
@@ -29,9 +30,9 @@ def single_site_asd_compute(indv_gt, sim_mat, count_mat):
             if len2_sort([a, b]) == len2_sort(gt2):
                 pass  # sim_mat[idx1, idx2] += 0
             elif a not in gt2 and b not in gt2:
-                sim_mat[idx1, idx2] += 2
+                asd_mat[idx1, idx2] += 2
             else:
-                sim_mat[idx1, idx2] += 1
+                asd_mat[idx1, idx2] += 1
             idx2 += 1
     return
 
@@ -132,29 +133,11 @@ class Naive:
                 last_line = f.readline().decode()
         metric_mat += metric_mat.T
         count_mat += count_mat.T
-        np.fill_diagonal(count_mat, val=1)
         metric = np.true_divide(metric_mat, count_mat)
         metric *= self.multiplication_constant
         np.fill_diagonal(metric, val=0)
         df = pd.DataFrame(metric, index=individuals, columns=individuals)
-        self.save_output(file_name, df, iter_num)
+        count_df = pd.DataFrame(count_mat, index=individuals, columns=individuals)
+        df.to_csv(os.path.join(self.output_dir, f'{self.arguments.method}.csv'))
+        count_df.to_csv(os.path.join(self.output_dir, 'count.csv'))
         self.times.append(time.time() - start_time)
-
-    def save_output(self, file_name, df, iter_num):
-        base_name = os.path.join(self.output_dir, os.path.basename(file_name)[:-4])
-        output_path = base_name + f'_{iter_num}.csv'
-        df.to_csv(output_path)
-
-
-# def main():
-#     arguments = args_parser()
-#     naive = Naive(arguments, input=arguments.input, output=arguments.output)
-#     file_path = "C:\\Users\\shaharma\\LAB\\test.vcf"
-#     if not os.path.exists(file_path):
-#         write_random_vcf(100, 10000, file_path, num_alleles=2)
-#     naive.vcf_to_metric('VCF', file_path, 0)
-#     print("Done computation")
-#
-#
-# if __name__ == '__main__':
-#     main()

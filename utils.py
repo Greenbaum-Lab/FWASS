@@ -2,26 +2,44 @@ import argparse
 import os
 import pandas as pd
 import numpy as np
-import tqdm
+from tqdm import tqdm
 import time
 
 METHODS = ['asd', 'similarity']
 
-def args_parser():
-    parser = argparse.ArgumentParser()
+
+def args_parser(parser=None):
+    if parser is None:
+        parser = argparse.ArgumentParser()
     parser.add_argument("-i", "--input", dest="input",
                         help="input file in genepop (xlsx) format with raw sequencing")
     parser.add_argument("-o", "--output", dest="output", required=True,
                         help="Name of output directory. Program will generate a new directory with that name,"
                              " and all output files will be there")
+    parser = add_method_args(parser)
+    return handle_args(parser)
+
+
+def handle_args(parser):
+    options = parser.parse_args()
+    if options.method == 'asd' and not isinstance(options.weight, bool):
+        raise Exception("ASD metric doesn't support a weighted method. Did you mean to use --method similarity?")
+    if options.method not in METHODS:
+        raise Exception(f"Metric {options.method} is unknown. Available metrics to compute are {METHODS}")
+    os.makedirs(options.output, exist_ok=True)
+    return options
+
+
+def add_method_args(parser):
     parser.add_argument("-w", "--weighted", nargs='?', default=False, const=1, dest="weight",
                         help="If used, compute weighted metric, from Greenbaum et al., 2016. If not use, compute "
                              "unweighted metric from  Li and Horvitz, 1953. If used with a number, it will be used as "
                              "the power of the frequency vector. The default (if used) is linear (same as setting 1) "
-                             "and the default if not used is same as setting 0. If this flag is used with asd method, "
-                             "the program will fail.")
+                             "and the default if not used is same as setting 0. This flag is available with similarity"
+                             " method only. With other method the program will fail.")
     parser.add_argument("--method", required=True,
-                        help="Method to use. Use 'asd' for allele sharing distance (ASD) as in Xiaoyi Gaoa and Eden R. Martin, 2009."
+                        help="Method to use. Use 'asd' for allele sharing distance (ASD)"
+                             " as in Xiaoyi Gaoa and Eden R. Martin, 2009."
                              " The other option is 'similarity'. If used similarity see the 'weighted' flag for info "
                              "between the 3 options to use.")
     parser.add_argument("--max_memo", dest="max_mb", default=1, type=float,
@@ -33,20 +51,10 @@ def args_parser():
                         help="Maximum number of threads to compute small matrices simultaneously")
     parser.add_argument("--max_sites", dest="max_sites", default=0, type=int,
                         help="If assigned, compute similarity only based on the first 'max_site' sites")
-    parser.add_argument("--ns", dest="ns_format", default=False, action="store_true",
-                        help="output similarity matrix in format to use in NetStruct Hierarchy")
-    parser.add_argument("--dont_save_outputs", dest="save_outputs", default=True, action="store_false",
-                        help="Don't save the outputs, just return the Data frame. Use for research purpose")
-
-    options = parser.parse_args()
-    if options.method == 'asd' and not isinstance(options.weight, bool):
-        raise Exception("ASD metric doesn't support a weighted method. Did you mean to use --method similarity?")
-    if options.method not in METHODS:
-        raise Exception(f"Metric {options.method} is unknown. Available metrics to compute are {METHODS}")
-    if options.output[-1] != '/':
-        options.output += '/'
-    os.makedirs(options.output, exist_ok=True)
-    return options
+    parser.add_argument("--format", dest="output_format", default='csv',
+                        help='output metric matrix in that format. Default is csv, other option is `ns` or `netstruct`'
+                             'for text file in the NetStruct format.')
+    return parser
 
 
 def wait_for_jobs_to_be_done(jobs, max_number_of_threads):
@@ -139,6 +147,8 @@ def df2ns_format(similarity_data_frame):
     return new_data[:-1]
 
 def write_random_vcf(num_indv, num_snps, output_path, num_alleles=2):
+    if os.path.exists(output_path):
+        os.remove(output_path)
     txt = f"""##fileformat=VCFv4.2
 ##source=tskit 0.4.1
 ##FILTER=<ID=PASS,Description="All filters passed">
@@ -147,7 +157,7 @@ def write_random_vcf(num_indv, num_snps, output_path, num_alleles=2):
 """
     indv_names = '\t'.join([f'indv_{i}' for i in range(num_indv)])
     txt += f"#CHROM  POS     ID      REF     ALT     QUAL    FILTER  INFO    FORMAT  {indv_names}\n"
-    for snp in range(num_snps):
+    for snp in tqdm(range(num_snps)):
         rnd_samples = np.random.randint(num_alleles, size=num_indv * 2).reshape(-1, 2)
         line = f"1\t{snp}\t.\t0\t1\t.\tPASS\t.\tGT\t"
         lst_str_samples = [f'{e[0]}|{e[1]}' for e in rnd_samples]
