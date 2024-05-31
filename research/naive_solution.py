@@ -18,7 +18,6 @@ def single_site_asd_compute(indv_gt, asd_mat, count_mat, weight=None):
     for idx1, gt1 in enumerate(allele_split):
         if gt1 == ["FAIL"]:
             continue
-        count_mat[idx1, idx1] += 0.5   # based on the fact its a diploid
         a = gt1[0]
         b = gt1[1]
         idx2 = idx1

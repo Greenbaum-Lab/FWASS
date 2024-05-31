@@ -159,7 +159,7 @@ def write_random_vcf(num_indv, num_snps, output_path, num_alleles=2):
 """
     indv_names = '\t'.join([f'indv_{i}' for i in range(num_indv)])
     txt += f"#CHROM  POS     ID      REF     ALT     QUAL    FILTER  INFO    FORMAT  {indv_names}\n"
-    for snp in tqdm(range(num_snps)):
+    for snp in range(num_snps):
         rnd_samples = np.random.randint(num_alleles, size=num_indv * 2).reshape(-1, 2)
         line = f"1\t{snp}\t.\t0\t1\t.\tPASS\t.\tGT\t"
         lst_str_samples = [f'{e[0]}|{e[1]}' for e in rnd_samples]
