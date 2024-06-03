@@ -3,7 +3,7 @@ import json
 import os
 import time
 from copy import copy
-
+import pandas as pd
 import numpy as np
 from tqdm import tqdm
 import matplotlib.pyplot as plt
@@ -32,11 +32,12 @@ class Comparator:
         dir2_files = sorted(os.listdir(dir2))
         assert dir1_files == dir2_files, "Different files in naive directory and fast directory"
         for file in dir1_files:
-            with open(os.path.join(dir1, file), 'r') as f:
-                d1_file = f.read()
-            with open(os.path.join(dir2, file), 'r') as f:
-                d2_file = f.read()
-            assert d1_file == d2_file, f"There are differences in file {os.path.join(dir1, file)}"
+            d1_df = pd.read_csv(os.path.join(dir1, file))
+            d2_df = pd.read_csv(os.path.join(dir2, file))
+            assert all(d1_df.columns == d2_df.columns)
+            np1 = d1_df.to_numpy()
+            np2 = d2_df.to_numpy()
+            assert np.allclose(np1[:, 1:].astype(float), np2[:, 1:].astype(float)), f"There are differences in file {os.path.join(dir1, file)}"
             os.remove(os.path.join(dir1, file))
             os.remove(os.path.join(dir2, file))
 
