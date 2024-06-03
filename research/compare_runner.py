@@ -222,6 +222,7 @@ def experiment_argument_parser():
 
 
 if __name__ == '__main__':
+    np.random.seed(0)
     arguments = experiment_argument_parser()
     if arguments.comparison_name == 'num_of_individuals':
         ComparatorDiffNumIndividuals(arguments).run_comparison()
