@@ -2,7 +2,7 @@
 #
 
 #SBATCH -t 3-00:00 # Runtime in D-HH:MM
-#SBATCH --cpus-per-task=1 # Request that ncpus be allocated per process.
+#SBATCH -n 3 # Request that n cpus
 module load python
 echo "Start running jobs $comp to $output"
 mkdir $output
