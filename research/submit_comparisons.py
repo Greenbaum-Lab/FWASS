@@ -18,5 +18,5 @@ if __name__ == '__main__':
                       f"{os.path.join(arguments.output, comp, job_name)} --method {method}"
             if arguments.mock:
                 command += " --mock"
-            cmd2run = f"{sbatch_settings} {command}"
-            subprocess.run([submit_helper_path, cmd2run])
+            cmd2run = f"{sbatch_settings} {submit_helper_path} {command}"
+            subprocess.run([cmd2run])
