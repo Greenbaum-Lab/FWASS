@@ -61,7 +61,7 @@ class ComparatorDiffNumIndividuals(Comparator):
         for idx, name in enumerate(computers.keys()):
             colors[name] = list(mcolors.TABLEAU_COLORS.keys())[idx]
         if not os.path.exists(os.path.join(arguments.output, "mean_times.json")):
-            for num_indv in tqdm(num_indv_lst, desc='Num individuals: '):
+            for num_indv in num_indv_lst:
                 file_path = os.path.join(arguments.output, get_file_name(num_indv, num_snps))
                 arguments.input = file_path
                 for rep in range(repetitions):
@@ -181,11 +181,6 @@ class CompareDiffMemorySize(Comparator):
                 std_times[f'indv_{num_indv}'][f'max_{name}'] = np.std(alg.times)
         print(f"avg_times: {avg_times}")
         print(f"std_times: {std_times}")
-
-
-
-
-
 
 
 def get_file_name(num_indv, num_snps):
