@@ -222,18 +222,13 @@ def experiment_argument_parser(check_method=True):
 
 
 if __name__ == '__main__':
-    print('hiiiiii')
     np.random.seed(0)
     arguments = experiment_argument_parser()
     if arguments.comparison_name == 'num_of_individuals':
-        print("IN ComparatorDiffNumIndividuals")
         ComparatorDiffNumIndividuals(arguments).run_comparison()
     elif arguments.comparison_name == 'num_of_snps':
-        print("IN ComparatorDiffNumSNPs")
         ComparatorDiffNumSNPs(arguments).run_comparison()
     elif arguments.comparison_name == 'memory_size':
-        print("IN CompareDiffMemorySize")
         CompareDiffMemorySize(arguments).run_comparison()
     else:
-        print("OOOOOPS")
         raise NameError(f"Comparison name {arguments.comparison_name} is not valid")
