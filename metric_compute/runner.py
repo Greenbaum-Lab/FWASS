@@ -237,95 +237,6 @@ def assign_allele_numbers(data_df, loci_names):
 
     return np_arr, max_num_of_alleles
 
-# def vcf_to_small_matrices(input_format, options, mid_outputs_path, input_file_path, verbose):
-#     """
-#     Parse the VCF file, and save small matrices to compute on different threads.
-#     :param input_format: "VCF-GZ" if it compressed as gzip, "VCF" if it's a text file in a VCF format.
-#     :param options: running arguments
-#     :param mid_outputs_path: path of directory to throw mid-results for computations.
-#     :return: None, The function parse the file and save the small matrices in a mid_res directory.
-#     """
-#     read_file_func = gzip.open if "GZ" in input_format else open
-#     max_num_of_cells = options.max_mb * 10**6
-#     pbar = tqdm(desc="Run over sites")
-#     with read_file_func(input_file_path, "rb") as f:
-#         last_line = f.readline().decode()
-#         while last_line.startswith("##"):
-#             last_line = f.readline().decode()
-#         line = last_line.split()
-#         individuals = line[9:]
-#         format_dict = {x: line.index(x) for x in ["ID", "FORMAT", "#CHROM", "POS"]}
-#         num_of_indv = len(individuals)
-#         num_sites_to_read = int(max_num_of_cells // num_of_indv)
-#         matrices_counter = 0
-#         is_matrix_empty = True
-#         current_matrix = ""
-#         sites_counter = 1
-#         pbar.update(1)
-#         last_line = f.readline().decode()
-#         while last_line:
-#             if sites_counter % num_sites_to_read == 0:
-#                 with open(os.path.join(mid_outputs_path, f'mat_{matrices_counter}.tmp'), "w") as g:
-#                     g.write(current_matrix)
-#                 current_matrix = ""
-#                 matrices_counter += 1
-#             line = last_line.split()
-#             assert(len(line[9:]) == len(individuals) and line[format_dict["FORMAT"]].startswith("GT"))
-#             indv_gt = ['FAIL' if '.' in e.split(':')[0] else e.split(':')[0].replace('|', '/') for e in line[9:]]
-#             current_matrix += "\t".join(indv_gt) + '\n'
-#             is_matrix_empty = False
-#             sites_counter += 1
-#             last_line = f.readline().decode()
-#             pbar.update(1)
-#             if options.max_sites and sites_counter > options.max_sites:
-#                 break
-#
-#         if not is_matrix_empty:
-#             with open(os.path.join(mid_outputs_path, f'mat_{matrices_counter}.tmp'), "w") as g:
-#                 g.write(current_matrix)
-#
-#         with open(os.path.join(mid_outputs_path, "done.txt"), "w") as f:
-#             f.write("\t".join(individuals))
-#         if verbose:
-#             print(f"Done reading VCF file!\n{sites_counter -1} sites in total, divided over {matrices_counter + 1} matrices."
-#               f" Max of {num_sites_to_read} in each matrix.\n Currently computing the last few similarity matrices.")
-
-
-# def matrices012_to_metric_matrix(input_matrices, weighted, method):
-#     """
-#     Compute metric (see options in README)
-#     :param method: Name of metric to use. Supports the list in utils.METHODS
-#     :param input_matrices: 3D of 012 matrix, first axis is per allele number,
-#      second axis is per individual, third axis is per locus. In cell[x,y,z] there is a count
-#      of how may times do individual y has the allele x in locus z. It can be up to 2.
-#     :param weighted: If False (default) use relatedness measure from (Li and Horvitz, 1953).
-#      If True, use frequency weighted metric from (Greenbaum et al., 2016).
-#     :return: Metric matrix (rows are individuals, columns are individuals), and count matrix which
-#     is also individuals * individuals matrix, which tells us on how many sites each pair was computed.
-#     This verifies between pairs thanks to invalid data.
-#     """
-#     is_valid_matrix = np.sum(input_matrices, axis=0) / 2
-#     pairwise_count_valid_sites = is_valid_matrix @ is_valid_matrix.T
-#     matric = np.zeros_like(pairwise_count_valid_sites)
-#     for matrix in input_matrices:
-#         if method == 'asd':
-#             bin_matrix = (matrix > 0).astype(int)
-#             matric += bin_matrix @ bin_matrix.T
-#             matric += np.clip(matrix - 1, 0, 1) @ np.clip(matrix - 1, 0, 1).T
-#         elif method == 'similarity':
-#             if weighted:
-#                 num_valid_genotypes = np.sum(is_valid_matrix, axis=0)
-#                 allele_count = np.sum(matrix, axis=0)
-#                 freq = allele_count / (2 * num_valid_genotypes)
-#                 matric += (((1 - np.nan_to_num(freq)) ** weighted) * matrix) @ matrix.T
-#             else:
-#                 matric += matrix @ matrix.T * 2
-#
-#     if method == 'asd':
-#         return 2 * pairwise_count_valid_sites - matric, pairwise_count_valid_sites
-#     elif method == 'similarity':
-#         return 1/4 * matric, pairwise_count_valid_sites
-
 
 def save_numpy_outputs(options, metric_mat, count_mat, output_dir):
     """
@@ -341,7 +252,6 @@ def save_numpy_outputs(options, metric_mat, count_mat, output_dir):
     count_out_path = os.path.join(output_dir, "count.npy")
     np.save(raw_sim_out_path, metric_mat)
     np.save(count_out_path, count_mat)
-
 
 
 def get_metric_and_count_from_directory(options, directory):
