@@ -212,13 +212,13 @@ def file_name_to_indv(file_name):
         return int(num_snps)
 
 
-def experiment_argument_parser():
+def experiment_argument_parser(check_method=True):
         parser = argparse.ArgumentParser()
         parser.add_argument("--comparison_name", help="Name of the required comparison to run.")
         parser.add_argument("-o", "--output", required=True, help="Name of output directory")
         parser.add_argument("--mock", default=False, action='store_true')
         parser = add_method_args(parser)
-        return handle_args(parser)
+        return handle_args(parser, check_method=check_method)
 
 
 if __name__ == '__main__':

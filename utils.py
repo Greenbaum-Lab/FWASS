@@ -20,14 +20,19 @@ def args_parser(parser=None):
     return handle_args(parser)
 
 
-def handle_args(parser):
-    options = parser.parse_args()
-    if isinstance(options.weight, str):
-        options.weight = float(options.weight)
+def is_valid_method_arg(options):
     if options.method == 'asd' and not isinstance(options.weight, bool):
         raise Exception("ASD metric doesn't support a weighted method. Did you mean to use --method similarity?")
     if options.method not in METHODS:
         raise Exception(f"Metric {options.method} is unknown. Available metrics to compute are {METHODS}")
+
+
+def handle_args(parser, check_method=True):
+    options = parser.parse_args()
+    if isinstance(options.weight, str):
+        options.weight = float(options.weight)
+    if check_method:
+        is_valid_method_arg(options)
     os.makedirs(options.output, exist_ok=True)
     return options
 
@@ -39,7 +44,7 @@ def add_method_args(parser):
                              "the power of the frequency vector. The default (if used) is linear (same as setting 1) "
                              "and the default if not used is same as setting 0. This flag is available with similarity"
                              " method only. With other method the program will fail.")
-    parser.add_argument("--method", required=True,
+    parser.add_argument("--method",
                         help="Method to use. Use 'asd' for allele sharing distance (ASD)"
                              " as in Xiaoyi Gaoa and Eden R. Martin, 2009."
                              " The other option is 'similarity'. If used similarity see the 'weighted' flag for info "
