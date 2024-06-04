@@ -12,7 +12,7 @@ if __name__ == '__main__':
         os.makedirs(os.path.join(arguments.output, comp), exist_ok=True)
         for job_name, method in {'asd': 'asd', 'similarity': 'similarity', "weighted_similarity": "similarity -w 1"}.items():
             job_err = os.path.join(arguments.output, 'logs', f'{comp}_{job_name}_err')
-            job_out = os.path.join(arguments.output, 'logs', f'{comp}_{job_name}_err')
+            job_out = os.path.join(arguments.output, 'logs', f'{comp}_{job_name}_out')
             sbatch_settings = f'sbatch --time=72:00:00 --mem=8G --error="{job_err}" --output="{job_out}" --job-name="{job_name}"'
             command = f"python {compare_runner_path} --comparison_name {comp} -o " \
                       f"{os.path.join(arguments.output, comp, job_name)} --method {method}"
