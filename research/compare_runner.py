@@ -222,6 +222,7 @@ def experiment_argument_parser(check_method=True):
 
 
 if __name__ == '__main__':
+    print('hiiiiii')
     np.random.seed(0)
     arguments = experiment_argument_parser()
     if arguments.comparison_name == 'num_of_individuals':
