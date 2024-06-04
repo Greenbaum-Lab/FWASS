@@ -5,8 +5,8 @@ from research.compare_runner import experiment_argument_parser
 
 if __name__ == '__main__':
     arguments = experiment_argument_parser(check_method=False)
-    submit_helper_path = os.path.join(os.path.dirname(__file__), 'slurm.sh')
-    compare_runner_path = os.path.join(os.path.dirname(__file__), 'compare_runner.py')
+    submit_helper_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'slurm.sh')
+    compare_runner_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'compare_runner.py')
     os.makedirs(os.path.join(arguments.output, 'logs'), exist_ok=True)
     for comp in ['num_of_individuals', 'num_of_snps']:
         os.makedirs(os.path.join(arguments.output, comp), exist_ok=True)
