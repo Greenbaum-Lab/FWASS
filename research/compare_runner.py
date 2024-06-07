@@ -18,6 +18,15 @@ class Comparator:
     def __init__(self, arguments):
         self.options = arguments
         self.mock = arguments.mock
+        if arguments.method == 'asd':
+            self.name = 'ASD'
+        elif arguments.method == 'similarity':
+            if arguments.weight:
+                self.name = 'Weighted-ASS'
+            else:
+                self.name = 'ASS'
+        else:
+            raise NotImplementedError
 
     def load_times(self):
         with open(os.path.join(self.options.output, "mean_times.json"), "r") as f:
@@ -50,9 +59,9 @@ class ComparatorDiffNumIndividuals(Comparator):
         arguments = self.options
         avg_times = {'naive': [], 'fast': []}
         std_times = {'naive': [], 'fast': []}
-        num_indv_lst = [10, 50, 100] if self.mock else [10, 20, 50, 100, 200, 500, 1000]
-        num_snps = 2_000 if self.mock else 50_000
-        repetitions = 5
+        num_indv_lst = [10, 25, 50] if self.mock else [10, 20, 50, 100, 200, 500, 1000]
+        num_snps = 200 if self.mock else 50_000
+        repetitions = 3 if self.mock else 5
         computers = {}
         colors = {}
 
@@ -90,9 +99,9 @@ class ComparatorDiffNumIndividuals(Comparator):
 
         plt.xlabel("Number of individuals")
         plt.ylabel("Time (seconds)")
-        plt.title(f"Similarity computation time with {num_snps} SNPs")
+        plt.title(f"{self.name} computation time with {num_snps} SNPs")
         plt.legend()
-        plt.savefig(os.path.join(arguments.output, "running_time_comparison_diff_individuals.pdf"))
+        plt.savefig(os.path.join(arguments.output, f"running_time_comparison_diff_individuals_{self.name}.pdf"))
 
 
 class ComparatorDiffNumSNPs(Comparator):
@@ -104,9 +113,10 @@ class ComparatorDiffNumSNPs(Comparator):
         avg_times.update({f'fast {x}': [] for x in max_alleles_num})
         std_times = {'naive': [], 'fast': []}
         std_times.update({f'fast {x}': [] for x in max_alleles_num})
-        num_indv = 100
-        num_snps_lst = [1_000, 3_000, 10_000] if self.mock else [1000, 5000, 10_000, 50_000, 100_000, 200_000, 500_000,
+        num_indv = 30 if self.mock else 100
+        num_snps_lst = [5_000, 10_000, 20_000] if self.mock else [1000, 5000, 10_000, 50_000, 100_000, 200_000, 500_000,
                                                                  1_000_000]
+        num_snps_lst = np.array(num_snps_lst)
         repetitions = 2 if self.mock else 10
         computers = {}
         colors = {}
@@ -144,15 +154,15 @@ class ComparatorDiffNumSNPs(Comparator):
         for name in computers.keys():
             avg_times[name] = np.array(avg_times[name])
             std_times[name] = np.array(std_times[name])
-            plt.plot(num_snps_lst, avg_times[name], label=name, color=colors[name])
-            plt.fill_between(num_snps_lst, avg_times[name] - std_times[name], avg_times[name] + std_times[name],
+            plt.plot(num_snps_lst / 1000, avg_times[name], label=name, color=colors[name])
+            plt.fill_between(num_snps_lst / 1000, avg_times[name] - std_times[name], avg_times[name] + std_times[name],
                              alpha=0.3,
                              color=colors[name])
-        plt.xlabel("Number of sites")
+        plt.xlabel("Number of sites (thousands)")
         plt.ylabel("Time (seconds)")
-        plt.title(f"Similarity computation time with {num_indv} individuals")
+        plt.title(f"{self.name} computation time with {num_indv} individuals")
         plt.legend()
-        plt.savefig(os.path.join(arguments.output, "running_time_comparison_diff_snps.pdf"))
+        plt.savefig(os.path.join(arguments.output, f"running_time_comparison_diff_snps_{self.name}.pdf"))
 
 
 class CompareDiffMemorySize(Comparator):
