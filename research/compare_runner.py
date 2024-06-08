@@ -60,7 +60,7 @@ class ComparatorDiffNumIndividuals(Comparator):
         avg_times = {'naive': [], 'fast': []}
         std_times = {'naive': [], 'fast': []}
         num_indv_lst = [10, 25, 50] if self.mock else [10, 20, 50, 100, 200, 500, 1000]
-        num_snps = 200 if self.mock else 50_000
+        num_snps = 2_000 if self.mock else 50_000
         repetitions = 3 if self.mock else 5
         computers = {}
         colors = {}
