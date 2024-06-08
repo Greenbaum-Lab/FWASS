@@ -59,8 +59,8 @@ class ComparatorDiffNumIndividuals(Comparator):
         arguments = self.options
         avg_times = {'naive': [], 'fast': []}
         std_times = {'naive': [], 'fast': []}
-        num_indv_lst = [10, 50, 100] if self.mock else [10, 20, 50, 100, 200, 500, 1000]
-        num_snps = 5_000 if self.mock else 50_000
+        num_indv_lst = [25, 50, 100, 250] if self.mock else [10, 20, 50, 100, 200, 500, 1000]
+        num_snps = 10_000 if self.mock else 50_000
         repetitions = 3 if self.mock else 5
         computers = {}
         colors = {}
@@ -113,11 +113,11 @@ class ComparatorDiffNumSNPs(Comparator):
         avg_times.update({f'fast {x}': [] for x in max_alleles_num})
         std_times = {'naive': [], 'fast': []}
         std_times.update({f'fast {x}': [] for x in max_alleles_num})
-        num_indv = 50 if self.mock else 100
-        num_snps_lst = [5_000, 10_000, 20_000] if self.mock else [1000, 5000, 10_000, 50_000, 100_000, 200_000, 500_000,
+        num_indv = 100
+        num_snps_lst = [10_000, 50_000, 100_000] if self.mock else [1000, 5000, 10_000, 50_000, 100_000, 200_000, 500_000,
                                                                  1_000_000]
         num_snps_lst = np.array(num_snps_lst)
-        repetitions = 2 if self.mock else 10
+        repetitions = 3 if self.mock else 5
         computers = {}
         colors = {}
         for max_alleles in max_alleles_num:
